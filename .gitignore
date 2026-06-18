@@ -25,3 +25,4 @@ Thumbs.db
 # Front-end build output (added when web/ is wired in)
 /web/node_modules/
 /web/dist/
+/web/tsconfig.tsbuildinfo
