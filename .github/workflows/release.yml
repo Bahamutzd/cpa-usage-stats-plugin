@@ -42,11 +42,13 @@ jobs:
             ext: so
             cc: aarch64-linux-gnu-gcc
             apt: gcc-aarch64-linux-gnu
-          - os: macos-13
+          - os: macos-14
             goos: darwin
             goarch: amd64
             ext: dylib
-            cc: clang
+            # Cross-compile the Intel build on an Apple Silicon runner.
+            # macos-13 (Intel) runners are oversubscribed and queue 20+ min.
+            cc: "clang -arch x86_64"
           - os: macos-14
             goos: darwin
             goarch: arm64
