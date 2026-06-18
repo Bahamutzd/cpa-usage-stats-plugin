@@ -224,13 +224,21 @@
     }
 
     .tab {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       border: 1px solid var(--border);
-      background: var(--bg-soft);
+      background: color-mix(in srgb, var(--bg-soft) 92%, transparent);
       color: var(--text-soft);
-      padding: 10px 14px;
+      padding: 10px 16px;
+      min-height: 42px;
       border-radius: 999px;
       cursor: pointer;
-      transition: 0.2s ease;
+      font-weight: 600;
+      line-height: 1;
+      white-space: nowrap;
+      box-shadow: inset 0 1px 0 color-mix(in srgb, var(--bg-panel) 68%, transparent);
+      transition: 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
     }
 
     .tab:hover,
@@ -238,36 +246,71 @@
       color: var(--text);
       border-color: var(--border-strong);
       background: var(--bg-soft-strong);
+      box-shadow: 0 10px 24px color-mix(in srgb, var(--shadow-color) 12%, transparent);
+    }
+
+    .tab:hover {
+      transform: translateY(-1px);
+    }
+
+    .tab:focus-visible {
+      outline: none;
+      border-color: color-mix(in srgb, var(--accent) 56%, transparent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
     }
 
     .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
       border: 1px solid var(--border);
-      background: var(--bg-soft);
+      background: color-mix(in srgb, var(--bg-soft) 94%, transparent);
       color: var(--text);
-      padding: 10px 14px;
+      padding: 10px 15px;
+      min-height: 42px;
       border-radius: 12px;
       cursor: pointer;
-      transition: 0.2s ease;
+      font-weight: 600;
+      line-height: 1;
+      white-space: nowrap;
+      box-shadow: 0 8px 20px color-mix(in srgb, var(--shadow-color) 8%, transparent);
+      transition: 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
     }
 
     .btn:hover:not(:disabled) {
       border-color: var(--border-strong);
       background: var(--bg-soft-strong);
+      box-shadow: 0 12px 28px color-mix(in srgb, var(--shadow-color) 12%, transparent);
       transform: translateY(-1px);
+    }
+
+    .btn:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: 0 4px 12px color-mix(in srgb, var(--shadow-color) 10%, transparent);
+    }
+
+    .btn:focus-visible {
+      outline: none;
+      border-color: color-mix(in srgb, var(--accent) 56%, transparent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
     }
 
     .btn:disabled {
       opacity: 0.55;
       cursor: not-allowed;
+      box-shadow: none;
     }
 
     .btn.primary {
       border-color: color-mix(in srgb, var(--accent) 42%, transparent);
       background: color-mix(in srgb, var(--accent) 18%, var(--bg-panel));
+      color: color-mix(in srgb, var(--text) 92%, var(--accent) 8%);
     }
 
     .btn.ghost {
       background: transparent;
+      box-shadow: none;
     }
 
     .btn.warn {
@@ -344,6 +387,7 @@
       gap: 7px;
     }
 
+    .field.span-2 { grid-column: span 2; }
     .field.span-3 { grid-column: span 3; }
     .field.span-4 { grid-column: span 4; }
     .field.span-5 { grid-column: span 5; }
@@ -393,12 +437,46 @@
     }
 
     .checkline {
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       color: var(--text-soft);
       font-size: 13px;
-      min-height: 44px;
+      min-height: 46px;
+      width: 100%;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--bg-elevated) 86%, transparent);
+      box-sizing: border-box;
+      white-space: nowrap;
+      transition: 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .checkline:hover {
+      border-color: var(--border-strong);
+      background: var(--bg-soft-strong);
+    }
+
+    .checkline input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      flex: 0 0 auto;
+      accent-color: var(--accent);
+    }
+
+    .checkline span {
+      line-height: 1.3;
+    }
+
+    .toggle-field {
+      min-width: 132px;
+      align-self: end;
+    }
+
+    .toggle-field .checkline {
+      justify-content: center;
     }
 
     .actions-row {
@@ -406,6 +484,8 @@
       gap: 10px;
       flex-wrap: wrap;
       align-items: center;
+      margin-top: 2px;
+      row-gap: 10px;
     }
 
     .metric-grid {
@@ -680,6 +760,7 @@
 
       .field.span-3,
       .field.span-4,
+      .field.span-2,
       .field.span-5,
       .field.span-6,
       .field.span-8 {
@@ -703,6 +784,7 @@
 
       .field.span-3,
       .field.span-4,
+      .field.span-2,
       .field.span-5,
       .field.span-6,
       .field.span-8,
@@ -725,6 +807,14 @@
       }
 
       .toolbar {
+        justify-content: flex-start;
+      }
+
+      .toggle-field {
+        min-width: 0;
+      }
+
+      .toggle-field .checkline {
         justify-content: flex-start;
       }
     }
@@ -776,7 +866,7 @@
             <input id="apiBase" type="text" placeholder="留空使用当前同源前缀">
             <div class="field-hint">默认自动从当前插件页 URL 推导同源前缀，适配反向代理下的 <code>/prefix/v0/*</code> 场景。</div>
           </div>
-          <div class="field span-2">
+          <div class="field span-2 toggle-field">
             <label for="showSecret">显示密钥</label>
             <div class="checkline">
               <input id="showSecret" type="checkbox">
