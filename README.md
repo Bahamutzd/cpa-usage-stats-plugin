@@ -28,7 +28,11 @@ Functional usage-statistics plugin. What it does:
     per-model pricing; sync pulls the LiteLLM catalog.
 - `retention_days > 0` runs a hourly prune goroutine.
 - Serves a single-file dashboard (inline CSS/JS, hash router) at the plugin
-  resource route **Usage Stats** under `/v0/resource/plugins/cpa-usage-stats/`.
+  resource route **Usage Stats**. The exact page URL is
+  `/v0/resource/plugins/cpa-usage-stats/index`.
+  The shipped page includes its own connection bar, stores the management key
+  locally, and can infer the same-origin API prefix from the current resource
+  URL.
 
 ### Known limitations (host architecture, not bugs)
 
@@ -37,18 +41,21 @@ Functional usage-statistics plugin. What it does:
   delete a single alias by editing the list and `PUT`-ing the whole table back.
 - The dashboard is one self-contained HTML file — a tree of static assets
   cannot be served through the plugin resource route table.
-- `cost` fields are `0` until model prices are loaded via the prices tab; the
-  dashboard/monitoring builders do not yet multiply token counts by prices.
+- Backend `cost` fields are still `0`; once model prices are loaded, the
+  dashboard estimates request costs client-side for monitoring/overview cards
+  and tables.
 
 ## Using the dashboard
 
 1. Configure the plugin (see Install) and (re)start CLIProxyAPI.
 2. Open the CPA management UI; the plugin appears as the **Usage Stats** menu
-   item, served at `/v0/resource/plugins/cpa-usage-stats/`.
+   item, served at `/v0/resource/plugins/cpa-usage-stats/index`.
 3. In the dashboard header, paste the **Management Key** from the host's
    `management-key` config. It is stored in `localStorage` and sent as
    `Authorization: Bearer <key>` on every API call. API base can stay empty when
-   the dashboard is served from the same origin as CLIProxyAPI.
+   the dashboard is served from the same origin as CLIProxyAPI; the page will
+   infer the deploy prefix from its own `/v0/resource/plugins/...` URL. Only
+   fill API base when the management API is exposed on a different origin.
 
 ## Install
 
@@ -72,13 +79,18 @@ will appear next to the official source and the plugin can be installed in
 one click. After install, the **Usage Stats** menu item appears in the
 management UI.
 
-> **Note:** this is a fresh repo. Until you publish the first GitHub release
-> (push a `vX.Y.Z` tag — the workflow in `.github/workflows/release.yml` builds
-> c-shared libraries for linux/amd64+arm64, darwin/amd64+arm64, windows/amd64,
-> zips them with `checksums.txt`), the plugin store install will find no
-> release assets. For a local build see **Build locally**.
+> **Release contract:** CLIProxyAPI installs third-party plugins from the
+> plugin entry's GitHub `latest` release. Each release must contain
+> `<pluginID>_<version>_<goos>_<goarch>.zip` archives plus `checksums.txt`,
+> with the shared library at the zip root. The workflow in
+> `.github/workflows/release.yml` builds that layout from a `vX.Y.Z` tag.
 
 ## Build locally
+
+The runtime dashboard is embedded from `internal/webasset/panel.html`; no
+separate React build is required for the plugin to serve its shipped UI.
+The `web/` directory is optional iterative UI work and is not used by the
+runtime loader.
 
 ```bash
 # linux/macOS shared library

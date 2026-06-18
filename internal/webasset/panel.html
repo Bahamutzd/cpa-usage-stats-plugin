@@ -1,0 +1,2285 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CPA Usage Stats</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #09111d;
+      --bg-elevated: #101b2d;
+      --bg-panel: rgba(16, 27, 45, 0.92);
+      --bg-soft: rgba(63, 111, 186, 0.12);
+      --bg-soft-strong: rgba(63, 111, 186, 0.22);
+      --border: rgba(133, 162, 212, 0.24);
+      --border-strong: rgba(133, 162, 212, 0.4);
+      --text: #eef5ff;
+      --text-muted: #8fa5c8;
+      --text-soft: #b7c7e2;
+      --accent: #62a6ff;
+      --accent-2: #7fe0c8;
+      --danger: #ff7b88;
+      --warn: #ffc96b;
+      --ok: #6ce4a0;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+      --radius: 18px;
+      --radius-sm: 12px;
+      --mono: "Cascadia Mono", "Consolas", "Courier New", monospace;
+      --sans: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at top left, rgba(98, 166, 255, 0.22), transparent 32%),
+        radial-gradient(circle at top right, rgba(127, 224, 200, 0.18), transparent 26%),
+        linear-gradient(180deg, #0a1323 0%, #09111d 100%);
+      color: var(--text);
+      font-family: var(--sans);
+    }
+
+    body {
+      min-height: 100vh;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .app {
+      width: min(1500px, calc(100vw - 24px));
+      margin: 0 auto;
+      padding: 18px 0 28px;
+    }
+
+    .shell {
+      display: grid;
+      gap: 16px;
+    }
+
+    .topbar,
+    .panel,
+    .metric,
+    .table-wrap,
+    .empty,
+    .notice {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .topbar {
+      padding: 18px 20px 16px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .topbar-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .headline {
+      display: grid;
+      gap: 6px;
+    }
+
+    .eyebrow {
+      color: var(--accent-2);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .title {
+      margin: 0;
+      font-size: clamp(24px, 2vw, 32px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 14px;
+      max-width: 880px;
+      line-height: 1.55;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-soft);
+      padding: 10px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    .tab:hover,
+    .tab.active {
+      color: var(--text);
+      border-color: var(--border-strong);
+      background: linear-gradient(135deg, rgba(98, 166, 255, 0.2), rgba(127, 224, 200, 0.16));
+    }
+
+    .btn {
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    .btn:hover:not(:disabled) {
+      border-color: var(--border-strong);
+      background: rgba(255, 255, 255, 0.08);
+      transform: translateY(-1px);
+    }
+
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .btn.primary {
+      border-color: rgba(98, 166, 255, 0.55);
+      background: linear-gradient(135deg, rgba(98, 166, 255, 0.28), rgba(127, 224, 200, 0.18));
+    }
+
+    .btn.ghost {
+      background: transparent;
+    }
+
+    .btn.warn {
+      border-color: rgba(255, 201, 107, 0.45);
+      color: #ffe1a9;
+    }
+
+    .connection-summary {
+      display: grid;
+      gap: 8px;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .connection-badges {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-soft);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      box-shadow: 0 0 12px currentColor;
+    }
+
+    .dot.ok {
+      color: var(--ok);
+      background: var(--ok);
+    }
+
+    .dot.warn {
+      color: var(--warn);
+      background: var(--warn);
+    }
+
+    .dot.bad {
+      color: var(--danger);
+      background: var(--danger);
+    }
+
+    .view {
+      display: none;
+      gap: 16px;
+    }
+
+    .view.active {
+      display: grid;
+    }
+
+    .connection-grid,
+    .filters-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .field.span-3 { grid-column: span 3; }
+    .field.span-4 { grid-column: span 4; }
+    .field.span-5 { grid-column: span 5; }
+    .field.span-6 { grid-column: span 6; }
+    .field.span-8 { grid-column: span 8; }
+    .field.span-12 { grid-column: span 12; }
+
+    .field label {
+      font-size: 12px;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      padding: 11px 12px;
+      outline: none;
+      transition: 0.2s ease;
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      border-color: rgba(98, 166, 255, 0.6);
+      box-shadow: 0 0 0 3px rgba(98, 166, 255, 0.12);
+    }
+
+    .field textarea {
+      min-height: 180px;
+      resize: vertical;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .field-hint {
+      color: var(--text-muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .checkline {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-soft);
+      font-size: 13px;
+      min-height: 44px;
+    }
+
+    .actions-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric {
+      padding: 16px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .metric-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .metric-value {
+      font-size: clamp(24px, 1.6vw, 32px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .metric-sub {
+      color: var(--text-soft);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .panel {
+      padding: 16px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .panel-note {
+      color: var(--text-muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .grid-2 {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid-3 {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .notice {
+      padding: 12px 14px;
+      color: var(--text-soft);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .notice.warn {
+      border-color: rgba(255, 201, 107, 0.32);
+      color: #ffe1a9;
+    }
+
+    .notice.bad {
+      border-color: rgba(255, 123, 136, 0.32);
+      color: #ffc3cb;
+    }
+
+    .notice.ok {
+      border-color: rgba(108, 228, 160, 0.3);
+      color: #b9f3d0;
+    }
+
+    .empty {
+      padding: 24px;
+      color: var(--text-muted);
+      text-align: center;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .table-wrap {
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--text-muted);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      text-align: left;
+      font-weight: 700;
+    }
+
+    th.right,
+    td.right {
+      text-align: right;
+    }
+
+    td code {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: #d8e4ff;
+      white-space: nowrap;
+    }
+
+    tbody tr:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .mono {
+      font-family: var(--mono);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .status-pill.ok {
+      color: #b9f3d0;
+      border-color: rgba(108, 228, 160, 0.28);
+      background: rgba(108, 228, 160, 0.08);
+    }
+
+    .status-pill.bad {
+      color: #ffc3cb;
+      border-color: rgba(255, 123, 136, 0.28);
+      background: rgba(255, 123, 136, 0.08);
+    }
+
+    .status-pill.warn {
+      color: #ffe1a9;
+      border-color: rgba(255, 201, 107, 0.28);
+      background: rgba(255, 201, 107, 0.08);
+    }
+
+    .token-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .token-row {
+      display: grid;
+      gap: 8px;
+    }
+
+    .token-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--text-soft);
+      font-size: 13px;
+    }
+
+    .token-bar {
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      overflow: hidden;
+    }
+
+    .token-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, rgba(98, 166, 255, 0.9), rgba(127, 224, 200, 0.88));
+    }
+
+    .subgrid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .hint-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      color: var(--text-muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .pill-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .small {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .price-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .price-table input {
+      min-width: 0;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+    }
+
+    .footer-note {
+      color: var(--text-muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 1180px) {
+      .metric-grid,
+      .grid-2,
+      .grid-3 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .field.span-3,
+      .field.span-4,
+      .field.span-5,
+      .field.span-6,
+      .field.span-8 {
+        grid-column: span 6;
+      }
+    }
+
+    @media (max-width: 860px) {
+      .app {
+        width: calc(100vw - 16px);
+        padding-top: 10px;
+      }
+
+      .metric-grid,
+      .grid-2,
+      .grid-3,
+      .connection-grid,
+      .filters-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .field.span-3,
+      .field.span-4,
+      .field.span-5,
+      .field.span-6,
+      .field.span-8,
+      .field.span-12 {
+        grid-column: span 1;
+      }
+
+      .topbar,
+      .panel,
+      .notice,
+      .empty {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+
+      th,
+      td {
+        padding-left: 8px;
+        padding-right: 8px;
+      }
+
+      .toolbar {
+        justify-content: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="shell">
+      <section class="topbar">
+        <div class="topbar-head">
+          <div class="headline">
+            <div class="eyebrow">Standalone Plugin</div>
+            <h1 class="title">CPA Usage Stats</h1>
+            <p class="subtitle">
+              直接挂在 CLIProxyAPI 插件系统里的请求监控面板。支持按时间窗、账号、模型和 API Key 追踪调用规模、成功失败、Token 结构、估算花费，以及接近请求日志的近实时事件表。
+            </p>
+          </div>
+          <div class="toolbar">
+            <button class="btn ghost" id="refreshCurrent">刷新当前页</button>
+            <button class="btn primary" id="testConnection">测试管理接口</button>
+          </div>
+        </div>
+        <div class="tabs">
+          <button class="tab" data-tab="dashboard">概览</button>
+          <button class="tab" data-tab="monitoring">请求监控</button>
+          <button class="tab" data-tab="prices">模型价格</button>
+        </div>
+        <div class="connection-summary">
+          <div class="connection-badges" id="connectionBadges"></div>
+          <div id="connectionSummaryText"></div>
+        </div>
+      </section>
+
+      <section class="panel" id="connectionPanel">
+        <div class="panel-head">
+          <h2 class="panel-title">连接配置</h2>
+          <div class="pill-row">
+            <span class="status-pill warn" id="connectionStatusPill">未测试</span>
+          </div>
+        </div>
+        <div class="connection-grid">
+          <div class="field span-5">
+            <label for="managementKey">Management Key</label>
+            <input id="managementKey" type="password" placeholder="填写 CLIProxyAPI 的 management-key">
+            <div class="field-hint">这是访问 <code>/v0/management/*</code> 的鉴权头。当前插件页本身不受此头保护，但监控 API 受保护。</div>
+          </div>
+          <div class="field span-5">
+            <label for="apiBase">API Base</label>
+            <input id="apiBase" type="text" placeholder="留空使用当前同源前缀">
+            <div class="field-hint">默认自动从当前插件页 URL 推导同源前缀，适配反向代理下的 <code>/prefix/v0/*</code> 场景。</div>
+          </div>
+          <div class="field span-2">
+            <label for="showSecret">显示密钥</label>
+            <div class="checkline">
+              <input id="showSecret" type="checkbox">
+              <span>显示</span>
+            </div>
+          </div>
+        </div>
+        <div class="actions-row">
+          <button class="btn primary" id="saveConnection">保存并加载</button>
+          <button class="btn ghost" id="clearConnection">清空配置</button>
+        </div>
+        <div class="notice" id="connectionNotice">
+          管理密钥未配置时，页面仍然能打开，但任何监控数据请求都会返回 401。API Base 留空通常就是正确配置。
+        </div>
+      </section>
+
+      <section class="view" id="dashboardView">
+        <div class="notice" id="dashboardStatus">等待加载概览数据。</div>
+        <div class="metric-grid" id="dashboardMetrics"></div>
+        <div class="grid-2">
+          <section class="panel">
+            <div class="panel-head">
+              <h2 class="panel-title">Top Models Today</h2>
+              <div class="panel-note">按今日调用数排序</div>
+            </div>
+            <div id="dashboardTopModels"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2 class="panel-title">Token 结构</h2>
+              <div class="panel-note">输入 / 输出 / 推理 / Cache</div>
+            </div>
+            <div id="dashboardTokenMix"></div>
+          </section>
+        </div>
+        <div class="grid-2">
+          <section class="panel">
+            <div class="panel-head">
+              <h2 class="panel-title">Channel Health</h2>
+              <div class="panel-note">按 auth_index 汇总失败率与耗时</div>
+            </div>
+            <div id="dashboardChannelHealth"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2 class="panel-title">Recent Failures</h2>
+              <div class="panel-note">最新失败请求</div>
+            </div>
+            <div id="dashboardRecentFailures"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="monitoringView">
+        <section class="panel">
+          <div class="panel-head">
+            <h2 class="panel-title">过滤条件</h2>
+            <div class="panel-note">按账号与时间范围追踪调用规模、状态和花费。自动刷新会重新拉取摘要和近实时事件表。</div>
+          </div>
+          <div class="filters-grid">
+            <div class="field span-3">
+              <label for="rangePreset">时间范围</label>
+              <select id="rangePreset">
+                <option value="30m">最近 30 分钟</option>
+                <option value="6h">最近 6 小时</option>
+                <option value="24h">最近 24 小时</option>
+                <option value="7d">最近 7 天</option>
+                <option value="today">今天</option>
+                <option value="custom">自定义</option>
+              </select>
+            </div>
+            <div class="field span-3">
+              <label for="customFrom">开始时间</label>
+              <input id="customFrom" type="datetime-local">
+            </div>
+            <div class="field span-3">
+              <label for="customTo">结束时间</label>
+              <input id="customTo" type="datetime-local">
+            </div>
+            <div class="field span-3">
+              <label for="autoRefresh">自动刷新</label>
+              <select id="autoRefresh">
+                <option value="0">关闭</option>
+                <option value="10">10 秒</option>
+                <option value="30">30 秒</option>
+                <option value="60">60 秒</option>
+              </select>
+            </div>
+            <div class="field span-3">
+              <label for="accountFilter">账号</label>
+              <select id="accountFilter">
+                <option value="">全部账号</option>
+              </select>
+            </div>
+            <div class="field span-3">
+              <label for="modelFilter">模型</label>
+              <select id="modelFilter">
+                <option value="">全部模型</option>
+              </select>
+            </div>
+            <div class="field span-3">
+              <label for="searchQuery">全文检索</label>
+              <input id="searchQuery" type="text" placeholder="模型、endpoint、source、fail summary">
+            </div>
+            <div class="field span-3">
+              <label for="searchApiKeyHash">API Key Hash</label>
+              <input id="searchApiKeyHash" type="text" placeholder="精确匹配 api_key_hash">
+            </div>
+            <div class="field span-3">
+              <label>失败筛选</label>
+              <div class="checkline">
+                <input id="failedOnly" type="checkbox">
+                <span>只看失败请求</span>
+              </div>
+            </div>
+            <div class="field span-3">
+              <label>Token 筛选</label>
+              <div class="checkline">
+                <input id="excludeZeroToken" type="checkbox">
+                <span>排除零 Token 成功请求</span>
+              </div>
+            </div>
+          </div>
+          <div class="actions-row">
+            <button class="btn primary" id="applyFilters">应用筛选</button>
+            <button class="btn ghost" id="resetFilters">重置筛选</button>
+            <button class="btn ghost" id="loadMoreEvents">加载更多事件</button>
+          </div>
+        </section>
+
+        <div class="notice" id="monitoringStatus">等待加载监控数据。</div>
+        <div class="metric-grid" id="monitoringMetrics"></div>
+
+        <div class="grid-2">
+          <section class="panel">
+            <div class="panel-head">
+              <h2 class="panel-title">Token 结构与估算花费</h2>
+              <div class="panel-note">花费基于当前“模型价格”页里的 USD / 1M token 价格估算，未命中的模型按 0 处理。</div>
+            </div>
+            <div id="monitoringTokenMix"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2 class="panel-title">时间线</h2>
+              <div class="panel-note">当前窗口按小时或按天聚合</div>
+            </div>
+            <div id="monitoringTimeline"></div>
+          </section>
+        </div>
+
+        <div class="grid-2">
+          <section class="panel">
+            <div class="panel-head">
+              <h2 class="panel-title">账号统计</h2>
+              <div class="panel-note">按账号快照汇总，适合定位单账号调用规模与失败率。</div>
+            </div>
+            <div id="monitoringAccountStats"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2 class="panel-title">API Key 统计</h2>
+              <div class="panel-note">按 API Key Hash 汇总，适合排查 token 使用与异常。</div>
+            </div>
+            <div id="monitoringApiKeyStats"></div>
+          </section>
+        </div>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2 class="panel-title">Model Stats</h2>
+            <div class="panel-note">按模型拆解调用数、Token 与估算花费。</div>
+          </div>
+          <div id="monitoringModelStats"></div>
+        </section>
+
+        <div class="grid-2">
+          <section class="panel">
+            <div class="panel-head">
+              <h2 class="panel-title">Recent Failures</h2>
+              <div class="panel-note">失败状态、时延和摘要。</div>
+            </div>
+            <div id="monitoringRecentFailures"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2 class="panel-title">过滤视角</h2>
+              <div class="panel-note">当前筛选条件、自动刷新和价格命中情况。</div>
+            </div>
+            <div id="monitoringFilterSummary"></div>
+          </section>
+        </div>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2 class="panel-title">近实时事件表</h2>
+            <div class="panel-note" id="eventsMeta">按 <code>timestamp_ms desc, id desc</code> 进行游标翻页，接近请求日志视角。</div>
+          </div>
+          <div id="monitoringEvents"></div>
+        </section>
+      </section>
+
+      <section class="view" id="pricesView">
+        <section class="panel">
+          <div class="panel-head">
+            <h2 class="panel-title">模型价格</h2>
+            <div class="panel-note">监控页的花费估算会直接读取这里的价格。建议先同步 LiteLLM 目录，再按需补齐自定义模型。</div>
+          </div>
+          <div class="price-actions">
+            <button class="btn primary" id="syncPrices">从 LiteLLM 同步</button>
+            <button class="btn ghost" id="addPriceRow">新增模型</button>
+            <button class="btn ghost" id="savePrices">保存价格表</button>
+          </div>
+          <div class="notice" id="pricesStatus">等待加载模型价格。</div>
+          <div id="pricesTable"></div>
+          <div class="footer-note">
+            字段含义：Prompt / Completion / Cache Read / Cache Create 均为 USD / 1M token。监控估算优先使用 Cache Read / Cache Create；未填时按 0 处理。
+          </div>
+        </section>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const STORAGE = {
+        key: "cpaust.key",
+        base: "cpaust.base",
+        tab: "cpaust.tab",
+        preset: "cpaust.monitoring.preset",
+        refresh: "cpaust.monitoring.refresh"
+      };
+      const RESOURCE_MARKER = "/v0/resource/plugins/";
+      const DEFAULT_PRESET = "24h";
+      const DEFAULT_REFRESH = "30";
+      const EVENTS_PAGE_SIZE = 50;
+
+      const state = {
+        key: readString(STORAGE.key),
+        base: readString(STORAGE.base),
+        tab: "monitoring",
+        prices: {},
+        priceRows: [],
+        dashboard: null,
+        monitoring: null,
+        connection: {
+          kind: "warn",
+          message: "未测试"
+        },
+        loading: {
+          dashboard: false,
+          monitoring: false,
+          prices: false
+        },
+        filters: {
+          preset: readString(STORAGE.preset) || DEFAULT_PRESET,
+          customFrom: "",
+          customTo: "",
+          account: "",
+          model: "",
+          searchQuery: "",
+          searchApiKeyHash: "",
+          failedOnly: false,
+          excludeZeroToken: false,
+          autoRefresh: readString(STORAGE.refresh) || DEFAULT_REFRESH,
+          nextBeforeMS: 0,
+          nextBeforeID: 0
+        },
+        timers: {
+          dashboard: 0,
+          monitoring: 0
+        }
+      };
+
+      const els = {
+        tabs: Array.from(document.querySelectorAll("[data-tab]")),
+        refreshCurrent: byId("refreshCurrent"),
+        testConnection: byId("testConnection"),
+        connectionBadges: byId("connectionBadges"),
+        connectionSummaryText: byId("connectionSummaryText"),
+        connectionStatusPill: byId("connectionStatusPill"),
+        managementKey: byId("managementKey"),
+        apiBase: byId("apiBase"),
+        showSecret: byId("showSecret"),
+        saveConnection: byId("saveConnection"),
+        clearConnection: byId("clearConnection"),
+        connectionNotice: byId("connectionNotice"),
+        views: {
+          dashboard: byId("dashboardView"),
+          monitoring: byId("monitoringView"),
+          prices: byId("pricesView")
+        },
+        dashboardStatus: byId("dashboardStatus"),
+        dashboardMetrics: byId("dashboardMetrics"),
+        dashboardTopModels: byId("dashboardTopModels"),
+        dashboardTokenMix: byId("dashboardTokenMix"),
+        dashboardChannelHealth: byId("dashboardChannelHealth"),
+        dashboardRecentFailures: byId("dashboardRecentFailures"),
+        rangePreset: byId("rangePreset"),
+        customFrom: byId("customFrom"),
+        customTo: byId("customTo"),
+        autoRefresh: byId("autoRefresh"),
+        accountFilter: byId("accountFilter"),
+        modelFilter: byId("modelFilter"),
+        searchQuery: byId("searchQuery"),
+        searchApiKeyHash: byId("searchApiKeyHash"),
+        failedOnly: byId("failedOnly"),
+        excludeZeroToken: byId("excludeZeroToken"),
+        applyFilters: byId("applyFilters"),
+        resetFilters: byId("resetFilters"),
+        loadMoreEvents: byId("loadMoreEvents"),
+        monitoringStatus: byId("monitoringStatus"),
+        monitoringMetrics: byId("monitoringMetrics"),
+        monitoringTokenMix: byId("monitoringTokenMix"),
+        monitoringTimeline: byId("monitoringTimeline"),
+        monitoringAccountStats: byId("monitoringAccountStats"),
+        monitoringApiKeyStats: byId("monitoringApiKeyStats"),
+        monitoringModelStats: byId("monitoringModelStats"),
+        monitoringRecentFailures: byId("monitoringRecentFailures"),
+        monitoringFilterSummary: byId("monitoringFilterSummary"),
+        monitoringEvents: byId("monitoringEvents"),
+        eventsMeta: byId("eventsMeta"),
+        syncPrices: byId("syncPrices"),
+        addPriceRow: byId("addPriceRow"),
+        savePrices: byId("savePrices"),
+        pricesStatus: byId("pricesStatus"),
+        pricesTable: byId("pricesTable")
+      };
+
+      function byId(id) {
+        return document.getElementById(id);
+      }
+
+      function readString(key) {
+        try {
+          return localStorage.getItem(key) || "";
+        } catch {
+          return "";
+        }
+      }
+
+      function writeString(key, value) {
+        try {
+          if (!value) {
+            localStorage.removeItem(key);
+          } else {
+            localStorage.setItem(key, value);
+          }
+        } catch {
+          // Ignore localStorage failures in constrained browsers.
+        }
+      }
+
+      function inferSameOriginPrefix() {
+        const path = window.location.pathname || "";
+        const index = path.indexOf(RESOURCE_MARKER);
+        if (index < 0) {
+          return "";
+        }
+        return path.slice(0, index);
+      }
+
+      function resolveBasePath() {
+        const manual = state.base.trim().replace(/\/+$/, "");
+        if (manual) {
+          return manual;
+        }
+        return inferSameOriginPrefix();
+      }
+
+      function resolveDisplayBase() {
+        const manual = state.base.trim().replace(/\/+$/, "");
+        if (manual) {
+          return manual;
+        }
+        return `${window.location.origin}${inferSameOriginPrefix()} (same origin)`;
+      }
+
+      function buildUrl(path) {
+        const base = resolveBasePath();
+        return `${base}${path}`;
+      }
+
+      async function api(path, options = {}) {
+        const headers = Object.assign({}, options.headers || {});
+        const key = state.key.trim();
+        if (key) {
+          headers.Authorization = `Bearer ${key}`;
+        }
+        if (options.body && typeof options.body === "string" && !headers["Content-Type"]) {
+          headers["Content-Type"] = "application/json";
+        }
+        const response = await fetch(buildUrl(path), Object.assign({}, options, { headers }));
+        const contentType = response.headers.get("content-type") || "";
+        let payload = null;
+        if (contentType.includes("application/json")) {
+          try {
+            payload = await response.json();
+          } catch {
+            payload = null;
+          }
+        } else {
+          payload = await response.text();
+        }
+        if (!response.ok) {
+          const error = new Error(payload && payload.error ? payload.error : `${response.status} ${response.statusText}`.trim());
+          error.status = response.status;
+          throw error;
+        }
+        return payload;
+      }
+
+      function escapeHtml(value) {
+        return String(value == null ? "" : value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function fmtNum(value) {
+        return Number(value || 0).toLocaleString();
+      }
+
+      function fmtPct(value) {
+        if (value == null || Number.isNaN(Number(value))) {
+          return "-";
+        }
+        return `${(Number(value) * 100).toFixed(1)}%`;
+      }
+
+      function fmtMs(value) {
+        if (value == null || value === 0) {
+          return "-";
+        }
+        return `${Math.round(Number(value))} ms`;
+      }
+
+      function fmtDate(ms) {
+        if (!ms) {
+          return "-";
+        }
+        return new Date(Number(ms)).toLocaleString();
+      }
+
+      function fmtCost(value) {
+        if (!Number.isFinite(Number(value)) || Number(value) <= 0) {
+          return "$0.0000";
+        }
+        return `$${Number(value).toFixed(4)}`;
+      }
+
+      function fmtWindow(fromMS, toMS) {
+        return `${fmtDate(fromMS)} -> ${fmtDate(toMS)}`;
+      }
+
+      function shortText(value, max = 72) {
+        const text = String(value == null ? "" : value);
+        if (text.length <= max) {
+          return text;
+        }
+        return `${text.slice(0, max - 1)}…`;
+      }
+
+      function currentTabFromHash() {
+        const raw = window.location.hash.replace(/^#/, "").trim();
+        if (raw === "dashboard" || raw === "monitoring" || raw === "prices") {
+          return raw;
+        }
+        return readString(STORAGE.tab) || "monitoring";
+      }
+
+      function syncConnectionFormFromState() {
+        els.managementKey.value = state.key;
+        els.apiBase.value = state.base;
+      }
+
+      function syncMonitoringFormFromState() {
+        els.rangePreset.value = state.filters.preset;
+        els.customFrom.value = state.filters.customFrom;
+        els.customTo.value = state.filters.customTo;
+        els.accountFilter.value = state.filters.account;
+        els.modelFilter.value = state.filters.model;
+        els.searchQuery.value = state.filters.searchQuery;
+        els.searchApiKeyHash.value = state.filters.searchApiKeyHash;
+        els.failedOnly.checked = state.filters.failedOnly;
+        els.excludeZeroToken.checked = state.filters.excludeZeroToken;
+        els.autoRefresh.value = state.filters.autoRefresh;
+      }
+
+      function setNotice(element, kind, message) {
+        element.className = `notice ${kind || ""}`.trim();
+        element.innerHTML = escapeHtml(message);
+      }
+
+      function setConnectionStatus(kind, message) {
+        state.connection.kind = kind;
+        state.connection.message = message;
+        const map = {
+          ok: ["ok", "管理接口可用"],
+          warn: ["warn", "等待配置"],
+          bad: ["bad", "连接失败"],
+          busy: ["warn", "测试中"]
+        };
+        const entry = map[kind] || map.warn;
+        els.connectionStatusPill.className = `status-pill ${entry[0]}`;
+        els.connectionStatusPill.textContent = `${entry[1]}: ${message}`;
+        renderConnectionSummary();
+      }
+
+      function renderConnectionSummary() {
+        const hasKey = Boolean(state.key.trim());
+        const sameOrigin = state.base.trim() === "";
+        const badges = [
+          {
+            tone: hasKey ? "ok" : "bad",
+            label: hasKey ? "Management Key 已配置" : "Management Key 未配置"
+          },
+          {
+            tone: sameOrigin ? "ok" : "warn",
+            label: sameOrigin ? "使用同源前缀" : "使用自定义 API Base"
+          },
+          {
+            tone: state.connection.kind === "ok" ? "ok" : state.connection.kind === "bad" ? "bad" : "warn",
+            label: state.connection.message
+          }
+        ];
+        els.connectionBadges.innerHTML = badges.map((item) => (
+          `<span class="badge"><span class="dot ${item.tone}"></span>${escapeHtml(item.label)}</span>`
+        )).join("");
+        const prefix = escapeHtml(resolveDisplayBase());
+        els.connectionSummaryText.innerHTML = [
+          `当前管理接口基址：<code>${prefix}</code>`,
+          hasKey
+            ? "页面会在每次监控请求里自动携带 Authorization 头。"
+            : "当前还没有可用于监控 API 的 Authorization 头。"
+        ].join(" ");
+      }
+
+      function startOfTodayMS() {
+        const date = new Date();
+        date.setHours(0, 0, 0, 0);
+        return date.getTime();
+      }
+
+      function formatDateTimeInput(ms) {
+        const date = new Date(ms);
+        const year = date.getFullYear();
+        const month = `${date.getMonth() + 1}`.padStart(2, "0");
+        const day = `${date.getDate()}`.padStart(2, "0");
+        const hour = `${date.getHours()}`.padStart(2, "0");
+        const minute = `${date.getMinutes()}`.padStart(2, "0");
+        return `${year}-${month}-${day}T${hour}:${minute}`;
+      }
+
+      function parseDateTimeInput(value) {
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime())) {
+          return 0;
+        }
+        return parsed.getTime();
+      }
+
+      function applyPreset(preset) {
+        const now = Date.now();
+        let fromMS = now - 24 * 60 * 60 * 1000;
+        if (preset === "30m") {
+          fromMS = now - 30 * 60 * 1000;
+        } else if (preset === "6h") {
+          fromMS = now - 6 * 60 * 60 * 1000;
+        } else if (preset === "7d") {
+          fromMS = now - 7 * 24 * 60 * 60 * 1000;
+        } else if (preset === "today") {
+          fromMS = startOfTodayMS();
+        } else if (preset === "custom") {
+          return;
+        }
+        state.filters.customFrom = formatDateTimeInput(fromMS);
+        state.filters.customTo = formatDateTimeInput(now);
+      }
+
+      function resolveMonitoringWindow() {
+        if (state.filters.preset !== "custom") {
+          applyPreset(state.filters.preset);
+        }
+        const fromMS = parseDateTimeInput(state.filters.customFrom);
+        const toMS = parseDateTimeInput(state.filters.customTo);
+        return { fromMS, toMS };
+      }
+
+      function saveConnectionState() {
+        state.key = els.managementKey.value.trim();
+        state.base = els.apiBase.value.trim();
+        writeString(STORAGE.key, state.key);
+        writeString(STORAGE.base, state.base);
+        renderConnectionSummary();
+      }
+
+      function saveMonitoringPrefs() {
+        writeString(STORAGE.preset, state.filters.preset);
+        writeString(STORAGE.refresh, state.filters.autoRefresh);
+      }
+
+      function normalizeTab(tab) {
+        return tab === "dashboard" || tab === "prices" ? tab : "monitoring";
+      }
+
+      function switchTab(tab) {
+        state.tab = normalizeTab(tab);
+        writeString(STORAGE.tab, state.tab);
+        if (window.location.hash.replace(/^#/, "") !== state.tab) {
+          window.location.hash = state.tab;
+        }
+        els.tabs.forEach((button) => {
+          button.classList.toggle("active", button.dataset.tab === state.tab);
+        });
+        Object.entries(els.views).forEach(([name, element]) => {
+          element.classList.toggle("active", name === state.tab);
+        });
+        scheduleActiveRefresh();
+        void loadActiveView();
+      }
+
+      function clearTimers() {
+        if (state.timers.dashboard) {
+          clearInterval(state.timers.dashboard);
+          state.timers.dashboard = 0;
+        }
+        if (state.timers.monitoring) {
+          clearInterval(state.timers.monitoring);
+          state.timers.monitoring = 0;
+        }
+      }
+
+      function scheduleActiveRefresh() {
+        clearTimers();
+        if (!state.key.trim()) {
+          return;
+        }
+        if (state.tab === "dashboard") {
+          state.timers.dashboard = window.setInterval(() => {
+            void loadDashboard();
+          }, 30_000);
+        }
+        if (state.tab === "monitoring") {
+          const seconds = Number(state.filters.autoRefresh || 0);
+          if (seconds > 0) {
+            state.timers.monitoring = window.setInterval(() => {
+              void loadMonitoring({ append: false });
+            }, seconds * 1000);
+          }
+        }
+      }
+
+      async function testConnection() {
+        saveConnectionState();
+        if (!state.key.trim()) {
+          setConnectionStatus("bad", "缺少 Management Key");
+          setNotice(els.connectionNotice, "bad", "请先填写 Management Key，再测试管理接口。");
+          return;
+        }
+        setConnectionStatus("busy", "正在请求 /v0/management/dashboard/summary");
+        try {
+          const now = Date.now();
+          await api(`/v0/management/dashboard/summary?today_start_ms=${startOfTodayMS()}&now_ms=${now}&top_models=1&recent_failures=1`);
+          setConnectionStatus("ok", "管理接口鉴权成功");
+          setNotice(els.connectionNotice, "ok", `已确认管理接口可用。当前基址：${resolveDisplayBase()}`);
+        } catch (error) {
+          setConnectionStatus("bad", friendlyError(error));
+          setNotice(els.connectionNotice, "bad", friendlyError(error));
+        }
+      }
+
+      function friendlyError(error) {
+        if (!error) {
+          return "未知错误";
+        }
+        if (Number(error.status) === 401) {
+          return "401 未授权，请确认 Management Key 是否正确。";
+        }
+        return error.message || String(error);
+      }
+
+      function renderMetricGrid(container, metrics) {
+        if (!metrics.length) {
+          container.innerHTML = `<div class="empty">暂无指标。</div>`;
+          return;
+        }
+        container.innerHTML = metrics.map((metric) => `
+          <article class="metric">
+            <div class="metric-label">${escapeHtml(metric.label)}</div>
+            <div class="metric-value">${escapeHtml(metric.value)}</div>
+            <div class="metric-sub">${escapeHtml(metric.sub)}</div>
+          </article>
+        `).join("");
+      }
+
+      function renderTable(container, columns, rows, emptyText) {
+        if (!rows.length) {
+          container.innerHTML = `<div class="empty">${escapeHtml(emptyText)}</div>`;
+          return;
+        }
+        const head = columns.map((column) => (
+          `<th class="${column.align === "right" ? "right" : ""}">${escapeHtml(column.label)}</th>`
+        )).join("");
+        const body = rows.map((row) => (
+          `<tr>${row.map((cell, index) => (
+            `<td class="${columns[index] && columns[index].align === "right" ? "right" : ""}">${cell}</td>`
+          )).join("")}</tr>`
+        )).join("");
+        container.innerHTML = `<div class="table-wrap"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+      }
+
+      function buildTokenMixSegments(summary) {
+        return [
+          { key: "input", label: "Input", tokens: Number(summary.input_tokens || 0) },
+          { key: "output", label: "Output", tokens: Number(summary.output_tokens || 0) },
+          { key: "reasoning", label: "Reasoning", tokens: Number(summary.reasoning_tokens || 0) },
+          { key: "cached", label: "Cached", tokens: Number(summary.cached_tokens || 0) },
+          { key: "cache_read", label: "Cache Read", tokens: Number(summary.cache_read_tokens || 0) },
+          { key: "cache_creation", label: "Cache Create", tokens: Number(summary.cache_creation_tokens || 0) }
+        ];
+      }
+
+      function renderTokenMix(container, summary) {
+        const segments = buildTokenMixSegments(summary).filter((segment) => segment.tokens > 0);
+        const total = segments.reduce((sum, segment) => sum + segment.tokens, 0);
+        if (!segments.length || total <= 0) {
+          container.innerHTML = `<div class="empty">当前窗口没有可展示的 Token 结构。</div>`;
+          return;
+        }
+        container.innerHTML = `<div class="token-list">${segments.map((segment) => {
+          const ratio = Math.max(0, Math.min(100, (segment.tokens / total) * 100));
+          return `
+            <div class="token-row">
+              <div class="token-head">
+                <span>${escapeHtml(segment.label)}</span>
+                <span>${escapeHtml(fmtNum(segment.tokens))} / ${escapeHtml(fmtPct(segment.tokens / total))}</span>
+              </div>
+              <div class="token-bar"><div class="token-fill" style="width:${ratio.toFixed(2)}%"></div></div>
+            </div>
+          `;
+        }).join("")}</div>`;
+      }
+
+      function normalizePrice(model) {
+        const direct = state.prices[model];
+        if (direct) {
+          return direct;
+        }
+        const trimmed = String(model || "").trim();
+        return state.prices[trimmed] || null;
+      }
+
+      function estimateCostForUsage(model, usage) {
+        const price = normalizePrice(model);
+        if (!price) {
+          return 0;
+        }
+        const promptTokens = Number(usage.input_tokens || usage.inputTokens || 0);
+        const completionTokens = Number(usage.output_tokens || usage.outputTokens || 0);
+        const cacheReadTokens = Number(usage.cache_read_tokens || usage.cacheReadTokens || 0);
+        const cacheCreationTokens = Number(usage.cache_creation_tokens || usage.cacheCreationTokens || 0);
+        const promptRate = Number(price.prompt || 0);
+        const completionRate = Number(price.completion || 0);
+        const cacheReadRate = Number(price.cacheRead != null ? price.cacheRead : price.cache || 0);
+        const cacheCreationRate = Number(price.cacheCreation != null ? price.cacheCreation : 0);
+        return (
+          (promptTokens / 1_000_000) * promptRate +
+          (completionTokens / 1_000_000) * completionRate +
+          (cacheReadTokens / 1_000_000) * cacheReadRate +
+          (cacheCreationTokens / 1_000_000) * cacheCreationRate
+        );
+      }
+
+      function estimateCostFromModels(models) {
+        return (models || []).reduce((sum, row) => sum + estimateCostForUsage(row.model, row), 0);
+      }
+
+      async function ensurePrices(force = false) {
+        if (!force && Object.keys(state.prices).length > 0) {
+          return state.prices;
+        }
+        try {
+          const payload = await api("/v0/management/model-prices");
+          state.prices = payload.prices || {};
+          state.priceRows = mapToPriceRows(state.prices);
+          renderPricesTable();
+          return state.prices;
+        } catch (error) {
+          if (!force) {
+            return state.prices;
+          }
+          throw error;
+        }
+      }
+
+      function mapToPriceRows(prices) {
+        return Object.keys(prices || {})
+          .sort((left, right) => left.localeCompare(right))
+          .map((model) => {
+            const row = prices[model] || {};
+            return {
+              model,
+              prompt: Number(row.prompt || 0),
+              completion: Number(row.completion || 0),
+              cacheRead: Number(row.cacheRead || 0),
+              cacheCreation: Number(row.cacheCreation || 0),
+              source: row.source || ""
+            };
+          });
+      }
+
+      function priceRowsToMap() {
+        const out = {};
+        state.priceRows.forEach((row) => {
+          const model = String(row.model || "").trim();
+          if (!model) {
+            return;
+          }
+          out[model] = {
+            prompt: Number(row.prompt || 0),
+            completion: Number(row.completion || 0),
+            cacheRead: Number(row.cacheRead || 0),
+            cacheCreation: Number(row.cacheCreation || 0),
+            source: String(row.source || "").trim()
+          };
+        });
+        return out;
+      }
+
+      function renderPricesTable() {
+        if (!state.priceRows.length) {
+          els.pricesTable.innerHTML = `<div class="empty">当前没有模型价格。可以先同步 LiteLLM，再对自定义模型做补充。</div>`;
+          return;
+        }
+        const rows = state.priceRows.map((row, index) => `
+          <tr>
+            <td><input data-price-index="${index}" data-field="model" value="${escapeHtml(row.model)}"></td>
+            <td><input data-price-index="${index}" data-field="prompt" type="number" step="0.0001" value="${escapeHtml(row.prompt)}"></td>
+            <td><input data-price-index="${index}" data-field="completion" type="number" step="0.0001" value="${escapeHtml(row.completion)}"></td>
+            <td><input data-price-index="${index}" data-field="cacheRead" type="number" step="0.0001" value="${escapeHtml(row.cacheRead)}"></td>
+            <td><input data-price-index="${index}" data-field="cacheCreation" type="number" step="0.0001" value="${escapeHtml(row.cacheCreation)}"></td>
+            <td><input data-price-index="${index}" data-field="source" value="${escapeHtml(row.source)}"></td>
+            <td class="right"><button class="btn ghost" data-remove-price="${index}">删除</button></td>
+          </tr>
+        `).join("");
+        els.pricesTable.innerHTML = `
+          <div class="table-wrap">
+            <table class="price-table">
+              <thead>
+                <tr>
+                  <th>Model</th>
+                  <th class="right">Prompt</th>
+                  <th class="right">Completion</th>
+                  <th class="right">Cache Read</th>
+                  <th class="right">Cache Create</th>
+                  <th>Source</th>
+                  <th class="right">操作</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      function collectPriceTableState() {
+        const inputs = els.pricesTable.querySelectorAll("[data-price-index][data-field]");
+        inputs.forEach((input) => {
+          const index = Number(input.getAttribute("data-price-index"));
+          const field = input.getAttribute("data-field");
+          if (!state.priceRows[index] || !field) {
+            return;
+          }
+          if (field === "model" || field === "source") {
+            state.priceRows[index][field] = input.value;
+          } else {
+            state.priceRows[index][field] = Number(input.value || 0);
+          }
+        });
+      }
+
+      async function loadDashboard() {
+        if (state.loading.dashboard) {
+          return;
+        }
+        if (!state.key.trim()) {
+          setNotice(els.dashboardStatus, "bad", "缺少 Management Key，无法读取概览数据。");
+          els.dashboardMetrics.innerHTML = "";
+          return;
+        }
+        state.loading.dashboard = true;
+        setNotice(els.dashboardStatus, "warn", "正在加载概览数据...");
+        try {
+          const now = Date.now();
+          const todayStart = startOfTodayMS();
+          const payload = await api(`/v0/management/dashboard/summary?today_start_ms=${todayStart}&now_ms=${now}&top_models=8&recent_failures=10`);
+          state.dashboard = payload;
+          renderDashboard();
+          setNotice(els.dashboardStatus, "ok", `概览已更新。时间窗：${fmtWindow(payload.window.today_start_ms, payload.window.now_ms)}`);
+        } catch (error) {
+          setNotice(els.dashboardStatus, "bad", friendlyError(error));
+        } finally {
+          state.loading.dashboard = false;
+        }
+      }
+
+      function renderDashboard() {
+        if (!state.dashboard) {
+          return;
+        }
+        const data = state.dashboard;
+        const today = data.today || {};
+        const rolling = data.rolling_30m || {};
+        const channelHealth = data.channel_health || [];
+        renderMetricGrid(els.dashboardMetrics, [
+          {
+            label: "Requests Today",
+            value: fmtNum(today.total_calls),
+            sub: `${fmtNum(today.success_calls)} success / ${fmtNum(today.failure_calls)} failed`
+          },
+          {
+            label: "Success Rate",
+            value: fmtPct(today.success_rate),
+            sub: `${fmtNum(today.zero_token_calls)} zero-token success`
+          },
+          {
+            label: "Total Tokens",
+            value: fmtNum(today.total_tokens),
+            sub: `In ${fmtNum(today.input_tokens)} / Out ${fmtNum(today.output_tokens)}`
+          },
+          {
+            label: "30m RPM / TPM",
+            value: `${fmtNum(Math.round(Number(rolling.rpm || 0)))} / ${fmtNum(Math.round(Number(rolling.tpm || 0)))}`,
+            sub: `Last 30m calls: ${fmtNum(rolling.total_calls)}`
+          },
+          {
+            label: "Avg Latency",
+            value: fmtMs(today.average_latency_ms),
+            sub: `Reasoning ${fmtNum(today.reasoning_tokens)}`
+          },
+          {
+            label: "Cache Tokens",
+            value: fmtNum((today.cached_tokens || 0) + (today.cache_read_tokens || 0) + (today.cache_creation_tokens || 0)),
+            sub: `Read ${fmtNum(today.cache_read_tokens)} / Create ${fmtNum(today.cache_creation_tokens)}`
+          },
+          {
+            label: "Unhealthy Channels",
+            value: fmtNum(channelHealth.filter((item) => Number(item.failure_rate || 0) >= 0.2).length),
+            sub: `Channels observed: ${fmtNum(channelHealth.length)}`
+          },
+          {
+            label: "Recent Failures",
+            value: fmtNum((data.recent_failures || []).length),
+            sub: "Newest failed requests in today window"
+          }
+        ]);
+
+        renderTokenMix(els.dashboardTokenMix, today);
+        renderTable(
+          els.dashboardTopModels,
+          [
+            { label: "Model" },
+            { label: "Calls", align: "right" },
+            { label: "Tokens", align: "right" },
+            { label: "Success", align: "right" }
+          ],
+          (data.top_models_today || []).map((row) => [
+            escapeHtml(row.model),
+            escapeHtml(fmtNum(row.calls)),
+            escapeHtml(fmtNum(row.tokens)),
+            escapeHtml(fmtPct(row.success_rate))
+          ]),
+          "今天还没有模型统计。"
+        );
+        renderTable(
+          els.dashboardChannelHealth,
+          [
+            { label: "Auth / Account" },
+            { label: "Calls", align: "right" },
+            { label: "Failure", align: "right" },
+            { label: "Latency", align: "right" }
+          ],
+          (data.channel_health || []).slice(0, 12).map((row) => [
+            `${escapeHtml(row.auth_index || "-")}<br><span class="small">${escapeHtml(shortText(row.account_snapshot || row.auth_label_snapshot || row.source || "-", 44))}</span>`,
+            escapeHtml(fmtNum(row.calls)),
+            `<span class="status-pill ${Number(row.failure_rate || 0) >= 0.2 ? "bad" : Number(row.failure_rate || 0) >= 0.05 ? "warn" : "ok"}">${escapeHtml(fmtPct(row.failure_rate))}</span>`,
+            escapeHtml(fmtMs(row.average_latency_ms))
+          ]),
+          "当前没有 channel health 数据。"
+        );
+        renderTable(
+          els.dashboardRecentFailures,
+          [
+            { label: "Time" },
+            { label: "Model" },
+            { label: "Status", align: "right" },
+            { label: "Summary" }
+          ],
+          (data.recent_failures || []).map((row) => [
+            escapeHtml(fmtDate(row.timestamp_ms)),
+            escapeHtml(row.model || "-"),
+            escapeHtml(row.fail_status_code == null ? "-" : String(row.fail_status_code)),
+            escapeHtml(shortText(row.fail_summary || "-", 86))
+          ]),
+          "今天还没有失败请求。"
+        );
+      }
+
+      function buildFilterOptionsFromData(data) {
+        const options = data.filter_options || {};
+        const accountOptions = (options.account_stats || data.account_stats || []).map((row) => ({
+          value: row.account_snapshot || row.auth_label_snapshot || row.auth_indices && row.auth_indices[0] || row.id || "",
+          label: [row.account_snapshot, row.auth_label_snapshot, row.auth_provider_snapshot].filter(Boolean).join(" / ") || row.id || "(unknown)"
+        })).filter((row) => row.value);
+        const modelOptions = (options.model_stats || data.model_stats || []).map((row) => ({
+          value: row.model,
+          label: row.model
+        })).filter((row) => row.value);
+        return {
+          accounts: uniqByValue(accountOptions),
+          models: uniqByValue(modelOptions)
+        };
+      }
+
+      function uniqByValue(items) {
+        const seen = new Set();
+        return items.filter((item) => {
+          if (seen.has(item.value)) {
+            return false;
+          }
+          seen.add(item.value);
+          return true;
+        });
+      }
+
+      function fillSelect(select, placeholder, items, selectedValue) {
+        const current = selectedValue || "";
+        const options = [`<option value="">${escapeHtml(placeholder)}</option>`].concat(items.map((item) => (
+          `<option value="${escapeHtml(item.value)}"${item.value === current ? " selected" : ""}>${escapeHtml(item.label)}</option>`
+        )));
+        select.innerHTML = options.join("");
+      }
+
+      function syncFiltersFromForm() {
+        state.filters.preset = els.rangePreset.value;
+        state.filters.customFrom = els.customFrom.value;
+        state.filters.customTo = els.customTo.value;
+        state.filters.account = els.accountFilter.value;
+        state.filters.model = els.modelFilter.value;
+        state.filters.searchQuery = els.searchQuery.value.trim();
+        state.filters.searchApiKeyHash = els.searchApiKeyHash.value.trim();
+        state.filters.failedOnly = els.failedOnly.checked;
+        state.filters.excludeZeroToken = els.excludeZeroToken.checked;
+        state.filters.autoRefresh = els.autoRefresh.value;
+        saveMonitoringPrefs();
+      }
+
+      function buildMonitoringRequest(include) {
+        const window = resolveMonitoringWindow();
+        return {
+          from_ms: window.fromMS,
+          to_ms: window.toMS,
+          search_query: state.filters.searchQuery,
+          search_api_key_hash: state.filters.searchApiKeyHash,
+          filters: {
+            models: state.filters.model ? [state.filters.model] : [],
+            accounts: state.filters.account ? [state.filters.account] : [],
+            failed_only: state.filters.failedOnly,
+            exclude_zero_token: state.filters.excludeZeroToken
+          },
+          include
+        };
+      }
+
+      async function loadMonitoring(options = {}) {
+        const append = Boolean(options.append);
+        if (state.loading.monitoring) {
+          return;
+        }
+        if (!state.key.trim()) {
+          setNotice(els.monitoringStatus, "bad", "缺少 Management Key，无法读取监控数据。");
+          els.monitoringMetrics.innerHTML = "";
+          return;
+        }
+        syncFiltersFromForm();
+        const window = resolveMonitoringWindow();
+        if (!(window.fromMS > 0 && window.toMS > window.fromMS)) {
+          setNotice(els.monitoringStatus, "bad", "时间范围无效，请重新选择开始和结束时间。");
+          return;
+        }
+        state.loading.monitoring = true;
+        setNotice(els.monitoringStatus, "warn", append ? "正在加载更多事件..." : "正在加载监控数据...");
+        try {
+          const include = append
+            ? {
+                events_page: {
+                  limit: EVENTS_PAGE_SIZE,
+                  before_ms: state.filters.nextBeforeMS,
+                  before_id: state.filters.nextBeforeID
+                }
+              }
+            : {
+                summary: true,
+                timeline: true,
+                model_stats: true,
+                account_stats: true,
+                api_key_stats: true,
+                filter_options: true,
+                recent_failures: 20,
+                events_page: { limit: EVENTS_PAGE_SIZE },
+                granularity: window.toMS - window.fromMS > 2 * 24 * 60 * 60 * 1000 ? "day" : "hour"
+              };
+          const payload = await api("/v0/management/monitoring/analytics", {
+            method: "POST",
+            body: JSON.stringify(buildMonitoringRequest(include))
+          });
+          await ensurePrices();
+          if (append && state.monitoring && state.monitoring.events) {
+            const currentItems = state.monitoring.events.items || [];
+            const nextItems = payload.events && payload.events.items ? payload.events.items : [];
+            state.monitoring.events = payload.events || { items: [] };
+            state.monitoring.events.items = currentItems.concat(nextItems);
+          } else {
+            state.monitoring = payload;
+          }
+          if (!append) {
+            const optionsData = buildFilterOptionsFromData(state.monitoring || {});
+            fillSelect(els.accountFilter, "全部账号", optionsData.accounts, state.filters.account);
+            fillSelect(els.modelFilter, "全部模型", optionsData.models, state.filters.model);
+          }
+          if (state.monitoring && state.monitoring.events) {
+            state.filters.nextBeforeMS = Number(state.monitoring.events.next_before_ms || 0);
+            state.filters.nextBeforeID = Number(state.monitoring.events.next_before_id || 0);
+          } else {
+            state.filters.nextBeforeMS = 0;
+            state.filters.nextBeforeID = 0;
+          }
+          renderMonitoring();
+          setNotice(els.monitoringStatus, "ok", `监控已更新。窗口：${fmtWindow(window.fromMS, window.toMS)}`);
+        } catch (error) {
+          setNotice(els.monitoringStatus, "bad", friendlyError(error));
+        } finally {
+          state.loading.monitoring = false;
+          scheduleActiveRefresh();
+        }
+      }
+
+      function renderMonitoring() {
+        if (!state.monitoring) {
+          return;
+        }
+        const data = state.monitoring;
+        const summary = data.summary || {};
+        const modelStats = data.model_stats || [];
+        const accountStats = data.account_stats || [];
+        const apiKeyStats = data.api_key_stats || [];
+        const events = data.events && data.events.items ? data.events.items : [];
+        const estimatedCost = modelStats.reduce((sum, row) => sum + estimateCostForUsage(row.model, row), 0);
+
+        renderMetricGrid(els.monitoringMetrics, [
+          {
+            label: "Total Requests",
+            value: fmtNum(summary.total_calls),
+            sub: `${fmtNum(summary.success_calls)} success / ${fmtNum(summary.failure_calls)} failed`
+          },
+          {
+            label: "Success Rate",
+            value: fmtPct(summary.success_rate),
+            sub: `Approx tasks ${fmtNum(summary.approx_tasks)} / fail ${fmtNum(summary.approx_task_failures)}`
+          },
+          {
+            label: "Total Tokens",
+            value: fmtNum(summary.total_tokens),
+            sub: `In ${fmtNum(summary.input_tokens)} / Out ${fmtNum(summary.output_tokens)}`
+          },
+          {
+            label: "Estimated Cost",
+            value: fmtCost(estimatedCost),
+            sub: Object.keys(state.prices).length ? "Based on current model prices" : "No price hit yet"
+          },
+          {
+            label: "30m RPM / TPM",
+            value: `${fmtNum(Math.round(Number(summary.rpm_30m || 0)))} / ${fmtNum(Math.round(Number(summary.tpm_30m || 0)))}`,
+            sub: `Active-day avg req ${fmtNum(Math.round(Number(summary.avg_daily_requests || 0)))}`
+          },
+          {
+            label: "Avg Latency",
+            value: fmtMs(summary.average_latency_ms),
+            sub: `${fmtNum(summary.zero_token_calls)} zero-token success`
+          },
+          {
+            label: "Accounts",
+            value: fmtNum(accountStats.length),
+            sub: `${fmtNum(apiKeyStats.length)} API keys in window`
+          },
+          {
+            label: "Realtime Events",
+            value: fmtNum(events.length),
+            sub: data.events && data.events.total_count != null ? `Loaded ${fmtNum(events.length)} / total ${fmtNum(data.events.total_count)}` : "Newest page"
+          }
+        ]);
+
+        renderTokenMix(els.monitoringTokenMix, summary);
+        renderTable(
+          els.monitoringTimeline,
+          [
+            { label: "Bucket" },
+            { label: "Calls", align: "right" },
+            { label: "Success", align: "right" },
+            { label: "Failure", align: "right" },
+            { label: "Tokens", align: "right" }
+          ],
+          (data.timeline || []).slice(-24).map((row) => [
+            escapeHtml(row.label || fmtDate(row.bucket_ms)),
+            escapeHtml(fmtNum(row.calls)),
+            escapeHtml(fmtNum(row.success)),
+            escapeHtml(fmtNum(row.failure)),
+            escapeHtml(fmtNum(row.tokens))
+          ]),
+          "当前窗口没有时间线数据。"
+        );
+
+        renderTable(
+          els.monitoringAccountStats,
+          [
+            { label: "Account" },
+            { label: "Calls", align: "right" },
+            { label: "Success", align: "right" },
+            { label: "Tokens", align: "right" },
+            { label: "Est Cost", align: "right" },
+            { label: "Last Seen", align: "right" }
+          ],
+          accountStats.slice(0, 20).map((row) => [
+            `${escapeHtml(shortText(row.account_snapshot || row.auth_label_snapshot || row.id || "(unknown)", 48))}<br><span class="small mono">${escapeHtml(shortText((row.auth_indices || []).join(","), 44))}</span>`,
+            escapeHtml(fmtNum(row.calls)),
+            `<span class="status-pill ${Number(row.success_rate || 0) < 0.8 ? "warn" : "ok"}">${escapeHtml(fmtPct(row.success_rate))}</span>`,
+            escapeHtml(fmtNum(row.total_tokens)),
+            escapeHtml(fmtCost(estimateCostFromModels(row.models))),
+            escapeHtml(fmtDate(row.last_seen_ms))
+          ]),
+          "当前窗口没有账号统计。"
+        );
+
+        renderTable(
+          els.monitoringApiKeyStats,
+          [
+            { label: "API Key Hash" },
+            { label: "Account" },
+            { label: "Calls", align: "right" },
+            { label: "Success", align: "right" },
+            { label: "Tokens", align: "right" },
+            { label: "Est Cost", align: "right" }
+          ],
+          apiKeyStats.slice(0, 20).map((row) => [
+            `<code>${escapeHtml(shortText(row.api_key_hash || row.id || "-", 18))}</code>`,
+            escapeHtml(shortText(row.account_snapshot || row.auth_label_snapshot || "-", 30)),
+            escapeHtml(fmtNum(row.calls)),
+            `<span class="status-pill ${Number(row.success_rate || 0) < 0.8 ? "warn" : "ok"}">${escapeHtml(fmtPct(row.success_rate))}</span>`,
+            escapeHtml(fmtNum(row.total_tokens)),
+            escapeHtml(fmtCost(estimateCostFromModels(row.models)))
+          ]),
+          "当前窗口没有 API Key 统计。"
+        );
+
+        renderTable(
+          els.monitoringModelStats,
+          [
+            { label: "Model" },
+            { label: "Calls", align: "right" },
+            { label: "Success", align: "right" },
+            { label: "Input", align: "right" },
+            { label: "Output", align: "right" },
+            { label: "Total", align: "right" },
+            { label: "Est Cost", align: "right" }
+          ],
+          modelStats.slice(0, 40).map((row) => [
+            escapeHtml(row.model || "-"),
+            escapeHtml(fmtNum(row.calls)),
+            escapeHtml(fmtPct(row.success_rate)),
+            escapeHtml(fmtNum(row.input_tokens)),
+            escapeHtml(fmtNum(row.output_tokens)),
+            escapeHtml(fmtNum(row.total_tokens)),
+            escapeHtml(fmtCost(estimateCostForUsage(row.model, row)))
+          ]),
+          "当前窗口没有模型统计。"
+        );
+
+        renderTable(
+          els.monitoringRecentFailures,
+          [
+            { label: "Time" },
+            { label: "Account / Auth" },
+            { label: "Model" },
+            { label: "Status", align: "right" },
+            { label: "Summary" }
+          ],
+          (data.recent_failures || []).map((row) => [
+            escapeHtml(fmtDate(row.timestamp_ms)),
+            `${escapeHtml(shortText(row.account_snapshot || row.auth_index || "-", 28))}<br><span class="small mono">${escapeHtml(shortText(row.api_key_hash || "-", 22))}</span>`,
+            escapeHtml(row.model || "-"),
+            escapeHtml(row.fail_status_code == null ? "-" : String(row.fail_status_code)),
+            escapeHtml(shortText(row.fail_summary || "-", 82))
+          ]),
+          "当前窗口没有失败请求。"
+        );
+
+        renderMonitoringFilterSummary();
+        renderMonitoringEvents();
+      }
+
+      function renderMonitoringFilterSummary() {
+        const window = resolveMonitoringWindow();
+        const summary = state.monitoring && state.monitoring.summary ? state.monitoring.summary : {};
+        const pills = [];
+        if (state.filters.account) {
+          pills.push(`账号: ${state.filters.account}`);
+        }
+        if (state.filters.model) {
+          pills.push(`模型: ${state.filters.model}`);
+        }
+        if (state.filters.searchQuery) {
+          pills.push(`检索: ${state.filters.searchQuery}`);
+        }
+        if (state.filters.searchApiKeyHash) {
+          pills.push(`API Key Hash: ${state.filters.searchApiKeyHash}`);
+        }
+        if (state.filters.failedOnly) {
+          pills.push("只看失败");
+        }
+        if (state.filters.excludeZeroToken) {
+          pills.push("排除零 Token");
+        }
+        const priceState = Object.keys(state.prices).length ? "价格表已加载，可估算花费" : "价格表为空，花费按 0 估算";
+        const lines = [
+          `<div class="hint-row"><span>当前窗口</span><strong>${escapeHtml(fmtWindow(window.fromMS, window.toMS))}</strong></div>`,
+          `<div class="hint-row"><span>自动刷新</span><strong>${escapeHtml(state.filters.autoRefresh === "0" ? "关闭" : `${state.filters.autoRefresh} 秒`)}</strong></div>`,
+          `<div class="hint-row"><span>价格状态</span><strong>${escapeHtml(priceState)}</strong></div>`,
+          `<div class="hint-row"><span>零 Token 模型</span><strong>${escapeHtml((summary.zero_token_models || []).slice(0, 8).join(", ") || "-")}</strong></div>`
+        ];
+        if (pills.length) {
+          lines.push(`<div class="pill-row">${pills.map((pill) => `<span class="badge">${escapeHtml(pill)}</span>`).join("")}</div>`);
+        }
+        els.monitoringFilterSummary.innerHTML = `<div class="subgrid">${lines.join("")}</div>`;
+      }
+
+      function renderMonitoringEvents() {
+        const events = state.monitoring && state.monitoring.events && state.monitoring.events.items ? state.monitoring.events.items : [];
+        const hasMore = Boolean(state.monitoring && state.monitoring.events && state.monitoring.events.has_more);
+        const totalCount = state.monitoring && state.monitoring.events ? state.monitoring.events.total_count : null;
+        els.loadMoreEvents.disabled = !hasMore || !state.filters.nextBeforeMS;
+        els.eventsMeta.innerHTML = [
+          `已加载 ${escapeHtml(fmtNum(events.length))} 条事件`,
+          totalCount == null ? "" : ` / 总计 ${escapeHtml(fmtNum(totalCount))} 条`,
+          hasMore ? "，可继续向后翻页。" : "，已到当前筛选窗口末尾。"
+        ].join("");
+        renderTable(
+          els.monitoringEvents,
+          [
+            { label: "Time" },
+            { label: "Account / Key" },
+            { label: "Model / Endpoint" },
+            { label: "Status" },
+            { label: "Tokens", align: "right" },
+            { label: "Latency", align: "right" },
+            { label: "Est Cost", align: "right" },
+            { label: "Summary" }
+          ],
+          events.map((row) => {
+            const effectiveModel = row.resolved_model || row.model;
+            const estimatedCost = estimateCostForUsage(effectiveModel, row);
+            return [
+              `${escapeHtml(fmtDate(row.timestamp_ms))}<br><span class="small mono">${escapeHtml(row.event_hash || "-")}</span>`,
+              `${escapeHtml(shortText(row.account_snapshot || row.auth_index || "-", 24))}<br><span class="small mono">${escapeHtml(shortText(row.api_key_hash || "-", 22))}</span>`,
+              `${escapeHtml(shortText(effectiveModel || "-", 28))}<br><span class="small">${escapeHtml(shortText(row.endpoint || row.path || "-", 36))}</span>`,
+              row.failed
+                ? `<span class="status-pill bad">${escapeHtml(row.fail_status_code == null ? "failed" : String(row.fail_status_code))}</span>`
+                : `<span class="status-pill ok">ok</span>`,
+              escapeHtml(fmtNum(row.total_tokens)),
+              escapeHtml(fmtMs(row.latency_ms || row.ttft_ms)),
+              escapeHtml(fmtCost(estimatedCost)),
+              escapeHtml(shortText(row.fail_summary || row.source || "-", 78))
+            ];
+          }),
+          "当前筛选窗口没有可展示的事件。"
+        );
+      }
+
+      async function loadPrices() {
+        if (state.loading.prices) {
+          return;
+        }
+        if (!state.key.trim()) {
+          setNotice(els.pricesStatus, "bad", "缺少 Management Key，无法读取模型价格。");
+          return;
+        }
+        state.loading.prices = true;
+        setNotice(els.pricesStatus, "warn", "正在加载模型价格...");
+        try {
+          await ensurePrices(true);
+          setNotice(els.pricesStatus, "ok", `已加载 ${fmtNum(state.priceRows.length)} 条模型价格。`);
+        } catch (error) {
+          setNotice(els.pricesStatus, "bad", friendlyError(error));
+        } finally {
+          state.loading.prices = false;
+        }
+      }
+
+      async function syncPrices() {
+        collectPriceTableState();
+        setNotice(els.pricesStatus, "warn", "正在从 LiteLLM 同步模型价格...");
+        try {
+          const payload = await api("/v0/management/model-prices/sync", { method: "POST" });
+          state.prices = payload.prices || {};
+          state.priceRows = mapToPriceRows(state.prices);
+          renderPricesTable();
+          setNotice(els.pricesStatus, "ok", `同步完成：imported ${fmtNum(payload.imported)}，skipped ${fmtNum(payload.skipped)}。`);
+        } catch (error) {
+          setNotice(els.pricesStatus, "bad", friendlyError(error));
+        }
+      }
+
+      async function savePrices() {
+        collectPriceTableState();
+        setNotice(els.pricesStatus, "warn", "正在保存模型价格...");
+        try {
+          const payload = await api("/v0/management/model-prices", {
+            method: "PUT",
+            body: JSON.stringify({ prices: priceRowsToMap() })
+          });
+          state.prices = payload.prices || {};
+          state.priceRows = mapToPriceRows(state.prices);
+          renderPricesTable();
+          setNotice(els.pricesStatus, "ok", `保存完成：当前共 ${fmtNum(state.priceRows.length)} 条模型价格。`);
+        } catch (error) {
+          setNotice(els.pricesStatus, "bad", friendlyError(error));
+        }
+      }
+
+      async function loadActiveView() {
+        if (state.tab === "dashboard") {
+          await loadDashboard();
+          return;
+        }
+        if (state.tab === "prices") {
+          await loadPrices();
+          return;
+        }
+        await loadMonitoring({ append: false });
+      }
+
+      function resetMonitoringFilters() {
+        state.filters.account = "";
+        state.filters.model = "";
+        state.filters.searchQuery = "";
+        state.filters.searchApiKeyHash = "";
+        state.filters.failedOnly = false;
+        state.filters.excludeZeroToken = false;
+        state.filters.preset = DEFAULT_PRESET;
+        state.filters.autoRefresh = DEFAULT_REFRESH;
+        state.filters.nextBeforeMS = 0;
+        state.filters.nextBeforeID = 0;
+        applyPreset(state.filters.preset);
+        syncMonitoringFormFromState();
+      }
+
+      function bindEvents() {
+        els.tabs.forEach((button) => {
+          button.addEventListener("click", () => switchTab(button.dataset.tab));
+        });
+        window.addEventListener("hashchange", () => switchTab(currentTabFromHash()));
+
+        els.showSecret.addEventListener("change", () => {
+          els.managementKey.type = els.showSecret.checked ? "text" : "password";
+        });
+        els.saveConnection.addEventListener("click", async () => {
+          saveConnectionState();
+          await testConnection();
+          await loadActiveView();
+          scheduleActiveRefresh();
+        });
+        els.clearConnection.addEventListener("click", () => {
+          state.key = "";
+          state.base = "";
+          writeString(STORAGE.key, "");
+          writeString(STORAGE.base, "");
+          syncConnectionFormFromState();
+          renderConnectionSummary();
+          setConnectionStatus("warn", "已清空配置");
+          clearTimers();
+        });
+        els.testConnection.addEventListener("click", () => {
+          void testConnection();
+        });
+        els.refreshCurrent.addEventListener("click", () => {
+          void loadActiveView();
+        });
+
+        els.rangePreset.addEventListener("change", () => {
+          state.filters.preset = els.rangePreset.value;
+          if (state.filters.preset !== "custom") {
+            applyPreset(state.filters.preset);
+            syncMonitoringFormFromState();
+          }
+        });
+        els.customFrom.addEventListener("change", () => {
+          state.filters.preset = "custom";
+          els.rangePreset.value = "custom";
+        });
+        els.customTo.addEventListener("change", () => {
+          state.filters.preset = "custom";
+          els.rangePreset.value = "custom";
+        });
+        els.applyFilters.addEventListener("click", () => {
+          state.filters.nextBeforeMS = 0;
+          state.filters.nextBeforeID = 0;
+          void loadMonitoring({ append: false });
+        });
+        els.resetFilters.addEventListener("click", () => {
+          resetMonitoringFilters();
+          void loadMonitoring({ append: false });
+        });
+        els.loadMoreEvents.addEventListener("click", () => {
+          if (!state.filters.nextBeforeMS) {
+            return;
+          }
+          void loadMonitoring({ append: true });
+        });
+        els.autoRefresh.addEventListener("change", () => {
+          state.filters.autoRefresh = els.autoRefresh.value;
+          saveMonitoringPrefs();
+          scheduleActiveRefresh();
+        });
+
+        els.syncPrices.addEventListener("click", () => {
+          void syncPrices();
+        });
+        els.savePrices.addEventListener("click", () => {
+          void savePrices();
+        });
+        els.addPriceRow.addEventListener("click", () => {
+          collectPriceTableState();
+          state.priceRows.push({
+            model: "",
+            prompt: 0,
+            completion: 0,
+            cacheRead: 0,
+            cacheCreation: 0,
+            source: ""
+          });
+          renderPricesTable();
+        });
+        els.pricesTable.addEventListener("click", (event) => {
+          const target = event.target;
+          if (!(target instanceof HTMLElement)) {
+            return;
+          }
+          const remove = target.getAttribute("data-remove-price");
+          if (remove == null) {
+            return;
+          }
+          collectPriceTableState();
+          state.priceRows.splice(Number(remove), 1);
+          renderPricesTable();
+        });
+      }
+
+      function init() {
+        state.tab = normalizeTab(currentTabFromHash());
+        applyPreset(state.filters.preset);
+        syncConnectionFormFromState();
+        syncMonitoringFormFromState();
+        bindEvents();
+        renderConnectionSummary();
+        if (state.key.trim()) {
+          setConnectionStatus("warn", "尚未测试，本页会自动尝试取数");
+        } else {
+          setConnectionStatus("warn", "等待填写 Management Key");
+        }
+        switchTab(state.tab);
+        if (!state.key.trim()) {
+          setNotice(els.dashboardStatus, "bad", "缺少 Management Key，无法读取概览数据。");
+          setNotice(els.monitoringStatus, "bad", "缺少 Management Key，无法读取监控数据。");
+          setNotice(els.pricesStatus, "bad", "缺少 Management Key，无法读取模型价格。");
+        }
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>
