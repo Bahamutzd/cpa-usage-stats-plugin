@@ -1546,7 +1546,7 @@
           const seconds = Number(state.filters.autoRefresh || 0);
           if (seconds > 0) {
             state.timers.monitoring = window.setInterval(() => {
-              void loadMonitoring({ append: false });
+              void loadMonitoring({ append: false, auto: true });
             }, seconds * 1000);
           }
         }
@@ -1974,8 +1974,72 @@
         };
       }
 
+      function buildMonitoringInclude(window, options = {}) {
+        const append = Boolean(options.append);
+        const auto = Boolean(options.auto);
+        if (append) {
+          return {
+            events_page: {
+              limit: EVENTS_PAGE_SIZE,
+              before_ms: state.filters.nextBeforeMS,
+              before_id: state.filters.nextBeforeID,
+              include_total_count: false
+            }
+          };
+        }
+        const include = {
+          summary: true,
+          timeline: true,
+          model_stats: true,
+          recent_failures: 20,
+          events_page: {
+            limit: EVENTS_PAGE_SIZE,
+            include_total_count: !auto
+          },
+          granularity: window.toMS - window.fromMS > 2 * 24 * 60 * 60 * 1000 ? "day" : "hour"
+        };
+        if (!auto) {
+          include.account_stats = true;
+          include.api_key_stats = true;
+        }
+        return include;
+      }
+
+      function mergeMonitoringPayload(payload, options = {}) {
+        const append = Boolean(options.append);
+        const auto = Boolean(options.auto);
+        if (append) {
+          const currentMonitoring = state.monitoring || {};
+          const currentEvents = currentMonitoring.events || { items: [] };
+          const nextEvents = payload.events || { items: [] };
+          const currentItems = currentEvents.items || [];
+          const nextItems = nextEvents.items || [];
+          state.monitoring = { ...currentMonitoring, ...payload };
+          state.monitoring.events = {
+            ...currentEvents,
+            ...nextEvents,
+            items: currentItems.concat(nextItems)
+          };
+          return;
+        }
+        if (auto && state.monitoring) {
+          const currentMonitoring = state.monitoring;
+          const currentEvents = currentMonitoring.events || {};
+          state.monitoring = { ...currentMonitoring, ...payload };
+          if (payload.events || currentEvents) {
+            state.monitoring.events = {
+              ...currentEvents,
+              ...(payload.events || {})
+            };
+          }
+          return;
+        }
+        state.monitoring = payload;
+      }
+
       async function loadMonitoring(options = {}) {
         const append = Boolean(options.append);
+        const auto = Boolean(options.auto);
         if (state.loading.monitoring) {
           return;
         }
@@ -1993,39 +2057,14 @@
         state.loading.monitoring = true;
         setNotice(els.monitoringStatus, "warn", append ? "正在加载更多事件..." : "正在加载监控数据...");
         try {
-          const include = append
-            ? {
-                events_page: {
-                  limit: EVENTS_PAGE_SIZE,
-                  before_ms: state.filters.nextBeforeMS,
-                  before_id: state.filters.nextBeforeID
-                }
-              }
-            : {
-                summary: true,
-                timeline: true,
-                model_stats: true,
-                account_stats: true,
-                api_key_stats: true,
-                filter_options: true,
-                recent_failures: 20,
-                events_page: { limit: EVENTS_PAGE_SIZE },
-                granularity: window.toMS - window.fromMS > 2 * 24 * 60 * 60 * 1000 ? "day" : "hour"
-              };
+          const include = buildMonitoringInclude(window, options);
           const payload = await api("/v0/management/monitoring/analytics", {
             method: "POST",
             body: JSON.stringify(buildMonitoringRequest(include))
           });
           await ensurePrices();
-          if (append && state.monitoring && state.monitoring.events) {
-            const currentItems = state.monitoring.events.items || [];
-            const nextItems = payload.events && payload.events.items ? payload.events.items : [];
-            state.monitoring.events = payload.events || { items: [] };
-            state.monitoring.events.items = currentItems.concat(nextItems);
-          } else {
-            state.monitoring = payload;
-          }
-          if (!append) {
+          mergeMonitoringPayload(payload, options);
+          if (!append && !auto) {
             const optionsData = buildFilterOptionsFromData(state.monitoring || {});
             fillSelect(els.accountFilter, "全部账号", optionsData.accounts, state.filters.account);
             fillSelect(els.modelFilter, "全部模型", optionsData.models, state.filters.model);

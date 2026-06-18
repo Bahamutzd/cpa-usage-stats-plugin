@@ -452,8 +452,10 @@ func buildEvents(r *http.Request, st *store.Store, filter store.AnalyticsFilter,
 	if pageResult.NextBeforeID > 0 {
 		resp.NextBeforeID = pageResult.NextBeforeID
 	}
-	if total, err := st.EventsCountWithFilter(r.Context(), filter); err == nil {
-		resp.TotalCount = &total
+	if page.IncludeTotalCount {
+		if total, err := st.EventsCountWithFilter(r.Context(), filter); err == nil {
+			resp.TotalCount = &total
+		}
 	}
 	return resp
 }

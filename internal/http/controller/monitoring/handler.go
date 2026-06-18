@@ -61,9 +61,10 @@ type analyticsInclude struct {
 }
 
 type analyticsEventsPageRequest struct {
-	Limit     int64 `json:"limit,omitempty"`
-	BeforeMS  int64 `json:"before_ms,omitempty"`
-	BeforeID  int64 `json:"before_id,omitempty"`
+	Limit             int64 `json:"limit,omitempty"`
+	BeforeMS          int64 `json:"before_ms,omitempty"`
+	BeforeID          int64 `json:"before_id,omitempty"`
+	IncludeTotalCount bool  `json:"include_total_count,omitempty"`
 }
 
 // Analytics handles POST /monitoring/analytics. The original CPA-Manager-Plus
