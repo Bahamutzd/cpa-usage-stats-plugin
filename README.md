@@ -4,7 +4,7 @@ A standalone CLIProxyAPI plugin that captures every request's usage record
 via the `usage_plugin` capability and exposes a CPA-Manager-Plus style
 dashboard / monitoring API through `management_api`. No separate process to
 deploy: install the plugin, the dashboard lives inside CLIProxyAPI's
-management UI under **Usage Stats**.
+management UI under **请求监控**.
 
 ## Status
 
@@ -28,7 +28,7 @@ Functional usage-statistics plugin. What it does:
     per-model pricing; sync pulls the LiteLLM catalog.
 - `retention_days > 0` runs a hourly prune goroutine.
 - Serves a single-file dashboard (inline CSS/JS, hash router) at the plugin
-  resource route **Usage Stats**. The exact page URL is
+  resource route **请求监控**. The exact page URL is
   `/v0/resource/plugins/cpa-usage-stats/index`.
   The shipped page includes its own connection bar, stores the management key
   locally, and can infer the same-origin API prefix from the current resource
@@ -48,7 +48,7 @@ Functional usage-statistics plugin. What it does:
 ## Using the dashboard
 
 1. Configure the plugin (see Install) and (re)start CLIProxyAPI.
-2. Open the CPA management UI; the plugin appears as the **Usage Stats** menu
+2. Open the CPA management UI; the plugin appears as the **请求监控** menu
    item, served at `/v0/resource/plugins/cpa-usage-stats/index`.
 3. In the dashboard header, paste the **Management Key** from the host's
    `management-key` config. It is stored in `localStorage` and sent as
@@ -76,7 +76,7 @@ plugins:
 
 Then open the plugin store in the management UI; the registry source above
 will appear next to the official source and the plugin can be installed in
-one click. After install, the **Usage Stats** menu item appears in the
+one click. After install, the **请求监控** menu item appears in the
 management UI.
 
 > **Release contract:** CLIProxyAPI installs third-party plugins from the

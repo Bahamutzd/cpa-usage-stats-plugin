@@ -21,8 +21,8 @@ const pluginID = "cpa-usage-stats"
 // plugin.reconfigure. The values mirror what CLIProxyAPI's plugin store and
 // management UI display.
 var metadata = pluginMetadata{
-	Name:             pluginID,
-	Version:          "0.2.1",
+	Name:             "请求监控",
+	Version:          "0.2.3",
 	Author:           "router-for-me",
 	GitHubRepository: "https://github.com/Bahamutzd/cpa-usage-stats-plugin",
 	Logo:             "",
@@ -30,12 +30,12 @@ var metadata = pluginMetadata{
 		{
 			Name:        "db_path",
 			Type:        "string",
-			Description: "SQLite database path. Defaults to ./cpa-usage-stats.db when empty.",
+			Description: "SQLite 数据库路径。留空时默认使用 ./cpa-usage-stats.db。",
 		},
 		{
 			Name:        "retention_days",
 			Type:        "integer",
-			Description: "Maximum age in days for retained usage events. 0 disables pruning.",
+			Description: "事件保留天数。设为 0 表示不清理历史事件。",
 		},
 	},
 }

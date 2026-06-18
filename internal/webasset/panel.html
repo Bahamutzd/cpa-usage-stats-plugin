@@ -3,30 +3,113 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CPA Usage Stats</title>
+  <title>请求监控</title>
   <style>
     :root {
-      color-scheme: dark;
-      --bg: #09111d;
-      --bg-elevated: #101b2d;
-      --bg-panel: rgba(16, 27, 45, 0.92);
-      --bg-soft: rgba(63, 111, 186, 0.12);
-      --bg-soft-strong: rgba(63, 111, 186, 0.22);
-      --border: rgba(133, 162, 212, 0.24);
-      --border-strong: rgba(133, 162, 212, 0.4);
-      --text: #eef5ff;
-      --text-muted: #8fa5c8;
-      --text-soft: #b7c7e2;
-      --accent: #62a6ff;
-      --accent-2: #7fe0c8;
-      --danger: #ff7b88;
-      --warn: #ffc96b;
-      --ok: #6ce4a0;
-      --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
-      --radius: 18px;
+      color-scheme: light;
+      --bg-primary: #f0eee8;
+      --bg-secondary: #faf9f5;
+      --bg-tertiary: #e9e6df;
+      --bg-quaternary: #fffdf9;
+      --border-color: #e3e1db;
+      --border-hover: #cecac4;
+      --primary-color: #8b8680;
+      --primary-color-strong: #726d67;
+      --success-color: #10b981;
+      --warning-color: #d97706;
+      --danger-color: #c65746;
+      --text-primary: #2d2a26;
+      --text-secondary: #6d6760;
+      --text-tertiary: #a29c95;
+
+      --bg: var(--bg-secondary);
+      --bg-elevated: var(--bg-primary);
+      --bg-panel: color-mix(in srgb, var(--bg-quaternary) 92%, transparent);
+      --bg-soft: color-mix(in srgb, var(--primary-color) 10%, transparent);
+      --bg-soft-strong: color-mix(in srgb, var(--primary-color) 18%, transparent);
+      --border: color-mix(in srgb, var(--border-color) 88%, transparent);
+      --border-strong: var(--border-hover);
+      --text: var(--text-primary);
+      --text-muted: var(--text-secondary);
+      --text-soft: #7b746d;
+      --accent: var(--primary-color);
+      --accent-2: var(--primary-color-strong);
+      --danger: var(--danger-color);
+      --warn: var(--warning-color);
+      --ok: var(--success-color);
+      --shadow: 0 12px 26px rgba(0, 0, 0, 0.14);
+      --code-text: #524d46;
+      --ok-text: #065f46;
+      --ok-bg: rgba(16, 185, 129, 0.12);
+      --ok-border: rgba(16, 185, 129, 0.28);
+      --warn-text: #92400e;
+      --warn-bg: rgba(217, 119, 6, 0.12);
+      --warn-border: rgba(217, 119, 6, 0.28);
+      --bad-text: #8a3a30;
+      --bad-bg: rgba(198, 87, 70, 0.12);
+      --bad-border: rgba(198, 87, 70, 0.28);
+      --radius: 16px;
       --radius-sm: 12px;
       --mono: "Cascadia Mono", "Consolas", "Courier New", monospace;
       --sans: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    [data-theme="white"] {
+      color-scheme: light;
+      --bg-primary: #ffffff;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #f6f6f6;
+      --bg-quaternary: #ffffff;
+      --border-color: #e5e5e5;
+      --border-hover: #cccccc;
+      --text-secondary: #6d6760;
+      --text-tertiary: #a29c95;
+      --bg-panel: color-mix(in srgb, var(--bg-quaternary) 96%, transparent);
+      --bg-soft: color-mix(in srgb, var(--primary-color) 8%, transparent);
+      --bg-soft-strong: color-mix(in srgb, var(--primary-color) 15%, transparent);
+      --border: color-mix(in srgb, var(--border-color) 92%, transparent);
+    }
+
+    [data-theme="dark"] {
+      color-scheme: dark;
+      --bg-primary: #1d1b18;
+      --bg-secondary: #151412;
+      --bg-tertiary: #262320;
+      --bg-quaternary: #2a2723;
+      --border-color: #3a3530;
+      --border-hover: #5a544d;
+      --primary-color: #8b8680;
+      --primary-color-strong: #a6a099;
+      --success-color: #10b981;
+      --warning-color: #f59e0b;
+      --danger-color: #c65746;
+      --text-primary: #f6f4f1;
+      --text-secondary: #c9c3bb;
+      --text-tertiary: #9c958d;
+
+      --bg-panel: color-mix(in srgb, var(--bg-primary) 92%, transparent);
+      --bg-soft: color-mix(in srgb, var(--primary-color) 12%, transparent);
+      --bg-soft-strong: color-mix(in srgb, var(--primary-color) 24%, transparent);
+      --border: color-mix(in srgb, var(--border-color) 92%, transparent);
+      --text: var(--text-primary);
+      --text-muted: var(--text-secondary);
+      --text-soft: #ddd7cf;
+      --accent: var(--primary-color);
+      --accent-2: var(--primary-color-strong);
+      --danger: var(--danger-color);
+      --warn: var(--warning-color);
+      --ok: var(--success-color);
+      --shadow: 0 14px 30px rgba(0, 0, 0, 0.4);
+      --code-text: #f1ede6;
+      --ok-text: #6ee7b7;
+      --ok-bg: rgba(6, 78, 59, 0.3);
+      --ok-border: #059669;
+      --warn-text: #fcd34d;
+      --warn-bg: rgba(245, 158, 11, 0.18);
+      --warn-border: rgba(245, 158, 11, 0.32);
+      --bad-text: #f1b0a6;
+      --bad-bg: rgba(198, 87, 70, 0.24);
+      --bad-border: rgba(198, 87, 70, 0.5);
     }
 
     * {
@@ -38,9 +121,9 @@
       margin: 0;
       min-height: 100%;
       background:
-        radial-gradient(circle at top left, rgba(98, 166, 255, 0.22), transparent 32%),
-        radial-gradient(circle at top right, rgba(127, 224, 200, 0.18), transparent 26%),
-        linear-gradient(180deg, #0a1323 0%, #09111d 100%);
+        radial-gradient(circle at top left, color-mix(in srgb, var(--accent) 16%, transparent), transparent 36%),
+        radial-gradient(circle at top right, color-mix(in srgb, var(--bg-tertiary) 72%, transparent), transparent 28%),
+        linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg) 100%);
       color: var(--text);
       font-family: var(--sans);
     }
@@ -81,7 +164,7 @@
       border-radius: var(--radius);
       background: var(--bg-panel);
       box-shadow: var(--shadow);
-      backdrop-filter: blur(14px);
+      backdrop-filter: blur(12px);
     }
 
     .topbar {
@@ -142,7 +225,7 @@
 
     .tab {
       border: 1px solid var(--border);
-      background: rgba(255, 255, 255, 0.03);
+      background: var(--bg-soft);
       color: var(--text-soft);
       padding: 10px 14px;
       border-radius: 999px;
@@ -154,12 +237,12 @@
     .tab.active {
       color: var(--text);
       border-color: var(--border-strong);
-      background: linear-gradient(135deg, rgba(98, 166, 255, 0.2), rgba(127, 224, 200, 0.16));
+      background: var(--bg-soft-strong);
     }
 
     .btn {
       border: 1px solid var(--border);
-      background: rgba(255, 255, 255, 0.04);
+      background: var(--bg-soft);
       color: var(--text);
       padding: 10px 14px;
       border-radius: 12px;
@@ -169,7 +252,7 @@
 
     .btn:hover:not(:disabled) {
       border-color: var(--border-strong);
-      background: rgba(255, 255, 255, 0.08);
+      background: var(--bg-soft-strong);
       transform: translateY(-1px);
     }
 
@@ -179,8 +262,8 @@
     }
 
     .btn.primary {
-      border-color: rgba(98, 166, 255, 0.55);
-      background: linear-gradient(135deg, rgba(98, 166, 255, 0.28), rgba(127, 224, 200, 0.18));
+      border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+      background: color-mix(in srgb, var(--accent) 18%, var(--bg-panel));
     }
 
     .btn.ghost {
@@ -188,8 +271,8 @@
     }
 
     .btn.warn {
-      border-color: rgba(255, 201, 107, 0.45);
-      color: #ffe1a9;
+      border-color: var(--warn-border);
+      color: var(--warn-text);
     }
 
     .connection-summary {
@@ -211,7 +294,7 @@
       gap: 8px;
       padding: 8px 12px;
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.04);
+      background: var(--bg-soft);
       border: 1px solid var(--border);
       font-size: 12px;
       color: var(--text-soft);
@@ -282,7 +365,7 @@
       width: 100%;
       border: 1px solid var(--border);
       border-radius: 12px;
-      background: rgba(255, 255, 255, 0.04);
+      background: color-mix(in srgb, var(--bg-elevated) 86%, transparent);
       color: var(--text);
       padding: 11px 12px;
       outline: none;
@@ -292,8 +375,8 @@
     .field input:focus,
     .field select:focus,
     .field textarea:focus {
-      border-color: rgba(98, 166, 255, 0.6);
-      box-shadow: 0 0 0 3px rgba(98, 166, 255, 0.12);
+      border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
     }
 
     .field textarea {
@@ -404,18 +487,21 @@
     }
 
     .notice.warn {
-      border-color: rgba(255, 201, 107, 0.32);
-      color: #ffe1a9;
+      border-color: var(--warn-border);
+      background: var(--warn-bg);
+      color: var(--warn-text);
     }
 
     .notice.bad {
-      border-color: rgba(255, 123, 136, 0.32);
-      color: #ffc3cb;
+      border-color: var(--bad-border);
+      background: var(--bad-bg);
+      color: var(--bad-text);
     }
 
     .notice.ok {
-      border-color: rgba(108, 228, 160, 0.3);
-      color: #b9f3d0;
+      border-color: var(--ok-border);
+      background: var(--ok-bg);
+      color: var(--ok-text);
     }
 
     .empty {
@@ -439,7 +525,7 @@
     th,
     td {
       padding: 10px 12px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid var(--border);
       vertical-align: top;
     }
 
@@ -460,12 +546,12 @@
     td code {
       font-family: var(--mono);
       font-size: 12px;
-      color: #d8e4ff;
+      color: var(--code-text);
       white-space: nowrap;
     }
 
     tbody tr:hover {
-      background: rgba(255, 255, 255, 0.03);
+      background: var(--bg-soft);
     }
 
     .mono {
@@ -484,21 +570,21 @@
     }
 
     .status-pill.ok {
-      color: #b9f3d0;
-      border-color: rgba(108, 228, 160, 0.28);
-      background: rgba(108, 228, 160, 0.08);
+      color: var(--ok-text);
+      border-color: var(--ok-border);
+      background: var(--ok-bg);
     }
 
     .status-pill.bad {
-      color: #ffc3cb;
-      border-color: rgba(255, 123, 136, 0.28);
-      background: rgba(255, 123, 136, 0.08);
+      color: var(--bad-text);
+      border-color: var(--bad-border);
+      background: var(--bad-bg);
     }
 
     .status-pill.warn {
-      color: #ffe1a9;
-      border-color: rgba(255, 201, 107, 0.28);
-      background: rgba(255, 201, 107, 0.08);
+      color: var(--warn-text);
+      border-color: var(--warn-border);
+      background: var(--warn-bg);
     }
 
     .token-list {
@@ -523,14 +609,14 @@
       width: 100%;
       height: 10px;
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.06);
+      background: var(--bg-soft);
       overflow: hidden;
     }
 
     .token-fill {
       height: 100%;
       border-radius: inherit;
-      background: linear-gradient(90deg, rgba(98, 166, 255, 0.9), rgba(127, 224, 200, 0.88));
+      background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 88%, white 12%), color-mix(in srgb, var(--accent-2) 82%, transparent));
     }
 
     .subgrid {
@@ -571,7 +657,7 @@
       padding: 8px 10px;
       border-radius: 10px;
       border: 1px solid var(--border);
-      background: rgba(255, 255, 255, 0.04);
+      background: color-mix(in srgb, var(--bg-elevated) 86%, transparent);
       color: var(--text);
     }
 
@@ -650,8 +736,8 @@
       <section class="topbar">
         <div class="topbar-head">
           <div class="headline">
-            <div class="eyebrow">Standalone Plugin</div>
-            <h1 class="title">CPA Usage Stats</h1>
+            <div class="eyebrow">CLIProxyAPI 插件页</div>
+            <h1 class="title">请求监控</h1>
             <p class="subtitle">
               直接挂在 CLIProxyAPI 插件系统里的请求监控面板。支持按时间窗、账号、模型和 API Key 追踪调用规模、成功失败、Token 结构、估算花费，以及接近请求日志的近实时事件表。
             </p>
@@ -681,12 +767,12 @@
         </div>
         <div class="connection-grid">
           <div class="field span-5">
-            <label for="managementKey">Management Key</label>
+            <label for="managementKey">管理密钥</label>
             <input id="managementKey" type="password" placeholder="填写 CLIProxyAPI 的 management-key">
             <div class="field-hint">这是访问 <code>/v0/management/*</code> 的鉴权头。当前插件页本身不受此头保护，但监控 API 受保护。</div>
           </div>
           <div class="field span-5">
-            <label for="apiBase">API Base</label>
+            <label for="apiBase">接口基址</label>
             <input id="apiBase" type="text" placeholder="留空使用当前同源前缀">
             <div class="field-hint">默认自动从当前插件页 URL 推导同源前缀，适配反向代理下的 <code>/prefix/v0/*</code> 场景。</div>
           </div>
@@ -703,7 +789,7 @@
           <button class="btn ghost" id="clearConnection">清空配置</button>
         </div>
         <div class="notice" id="connectionNotice">
-          管理密钥未配置时，页面仍然能打开，但任何监控数据请求都会返回 401。API Base 留空通常就是正确配置。
+          管理密钥未配置时，页面仍然能打开，但任何监控数据请求都会返回 401。接口基址留空通常就是正确配置。
         </div>
       </section>
 
@@ -713,7 +799,7 @@
         <div class="grid-2">
           <section class="panel">
             <div class="panel-head">
-              <h2 class="panel-title">Top Models Today</h2>
+              <h2 class="panel-title">今日热门模型</h2>
               <div class="panel-note">按今日调用数排序</div>
             </div>
             <div id="dashboardTopModels"></div>
@@ -721,7 +807,7 @@
           <section class="panel">
             <div class="panel-head">
               <h2 class="panel-title">Token 结构</h2>
-              <div class="panel-note">输入 / 输出 / 推理 / Cache</div>
+              <div class="panel-note">输入 / 输出 / 推理 / 缓存</div>
             </div>
             <div id="dashboardTokenMix"></div>
           </section>
@@ -729,14 +815,14 @@
         <div class="grid-2">
           <section class="panel">
             <div class="panel-head">
-              <h2 class="panel-title">Channel Health</h2>
+              <h2 class="panel-title">通道健康</h2>
               <div class="panel-note">按 auth_index 汇总失败率与耗时</div>
             </div>
             <div id="dashboardChannelHealth"></div>
           </section>
           <section class="panel">
             <div class="panel-head">
-              <h2 class="panel-title">Recent Failures</h2>
+              <h2 class="panel-title">最近失败</h2>
               <div class="panel-note">最新失败请求</div>
             </div>
             <div id="dashboardRecentFailures"></div>
@@ -793,10 +879,10 @@
             </div>
             <div class="field span-3">
               <label for="searchQuery">全文检索</label>
-              <input id="searchQuery" type="text" placeholder="模型、endpoint、source、fail summary">
+              <input id="searchQuery" type="text" placeholder="模型、endpoint、source、失败摘要">
             </div>
             <div class="field span-3">
-              <label for="searchApiKeyHash">API Key Hash</label>
+              <label for="searchApiKeyHash">API Key 哈希</label>
               <input id="searchApiKeyHash" type="text" placeholder="精确匹配 api_key_hash">
             </div>
             <div class="field span-3">
@@ -852,7 +938,7 @@
           <section class="panel">
             <div class="panel-head">
               <h2 class="panel-title">API Key 统计</h2>
-              <div class="panel-note">按 API Key Hash 汇总，适合排查 token 使用与异常。</div>
+              <div class="panel-note">按 API Key 哈希汇总，适合排查 Token 使用与异常。</div>
             </div>
             <div id="monitoringApiKeyStats"></div>
           </section>
@@ -860,7 +946,7 @@
 
         <section class="panel">
           <div class="panel-head">
-            <h2 class="panel-title">Model Stats</h2>
+            <h2 class="panel-title">模型统计</h2>
             <div class="panel-note">按模型拆解调用数、Token 与估算花费。</div>
           </div>
           <div id="monitoringModelStats"></div>
@@ -869,7 +955,7 @@
         <div class="grid-2">
           <section class="panel">
             <div class="panel-head">
-              <h2 class="panel-title">Recent Failures</h2>
+              <h2 class="panel-title">最近失败</h2>
               <div class="panel-note">失败状态、时延和摘要。</div>
             </div>
             <div id="monitoringRecentFailures"></div>
@@ -906,7 +992,7 @@
           <div class="notice" id="pricesStatus">等待加载模型价格。</div>
           <div id="pricesTable"></div>
           <div class="footer-note">
-            字段含义：Prompt / Completion / Cache Read / Cache Create 均为 USD / 1M token。监控估算优先使用 Cache Read / Cache Create；未填时按 0 处理。
+            字段含义：输入价 / 输出价 / 缓存读取价 / 缓存写入价，单位均为 USD / 1M token。监控估算优先使用缓存读取价 / 缓存写入价；未填时按 0 处理。
           </div>
         </section>
       </section>
@@ -1043,6 +1129,38 @@
         }
       }
 
+      function applyThemeFromValue(themeValue) {
+        if (themeValue === "dark" || themeValue === "white") {
+          document.documentElement.setAttribute("data-theme", themeValue);
+          return;
+        }
+        document.documentElement.removeAttribute("data-theme");
+      }
+
+      function syncThemeFromHost() {
+        try {
+          if (window.parent && window.parent !== window && window.parent.location.origin === window.location.origin) {
+            const parentRoot = window.parent.document.documentElement;
+            const mirrorParentTheme = () => applyThemeFromValue(parentRoot.getAttribute("data-theme"));
+            mirrorParentTheme();
+            const observer = new MutationObserver(mirrorParentTheme);
+            observer.observe(parentRoot, { attributes: true, attributeFilter: ["data-theme"] });
+            return;
+          }
+        } catch {
+          // Ignore cross-origin parent access and fall back to local theme.
+        }
+        if (!window.matchMedia) {
+          return;
+        }
+        const media = window.matchMedia("(prefers-color-scheme: dark)");
+        const mirrorSystemTheme = () => applyThemeFromValue(media.matches ? "dark" : "");
+        mirrorSystemTheme();
+        if (typeof media.addEventListener === "function") {
+          media.addEventListener("change", mirrorSystemTheme);
+        }
+      }
+
       function inferSameOriginPrefix() {
         const path = window.location.pathname || "";
         const index = path.indexOf(RESOURCE_MARKER);
@@ -1065,7 +1183,7 @@
         if (manual) {
           return manual;
         }
-        return `${window.location.origin}${inferSameOriginPrefix()} (same origin)`;
+        return `${window.location.origin}${inferSameOriginPrefix()}（同源）`;
       }
 
       function buildUrl(path) {
@@ -1206,11 +1324,11 @@
         const badges = [
           {
             tone: hasKey ? "ok" : "bad",
-            label: hasKey ? "Management Key 已配置" : "Management Key 未配置"
+            label: hasKey ? "管理密钥已配置" : "管理密钥未配置"
           },
           {
             tone: sameOrigin ? "ok" : "warn",
-            label: sameOrigin ? "使用同源前缀" : "使用自定义 API Base"
+            label: sameOrigin ? "使用同源前缀" : "使用自定义接口基址"
           },
           {
             tone: state.connection.kind === "ok" ? "ok" : state.connection.kind === "bad" ? "bad" : "warn",
@@ -1347,8 +1465,8 @@
       async function testConnection() {
         saveConnectionState();
         if (!state.key.trim()) {
-          setConnectionStatus("bad", "缺少 Management Key");
-          setNotice(els.connectionNotice, "bad", "请先填写 Management Key，再测试管理接口。");
+          setConnectionStatus("bad", "缺少管理密钥");
+          setNotice(els.connectionNotice, "bad", "请先填写管理密钥，再测试管理接口。");
           return;
         }
         setConnectionStatus("busy", "正在请求 /v0/management/dashboard/summary");
@@ -1368,7 +1486,7 @@
           return "未知错误";
         }
         if (Number(error.status) === 401) {
-          return "401 未授权，请确认 Management Key 是否正确。";
+          return "401 未授权，请确认管理密钥是否正确。";
         }
         return error.message || String(error);
       }
@@ -1405,12 +1523,12 @@
 
       function buildTokenMixSegments(summary) {
         return [
-          { key: "input", label: "Input", tokens: Number(summary.input_tokens || 0) },
-          { key: "output", label: "Output", tokens: Number(summary.output_tokens || 0) },
-          { key: "reasoning", label: "Reasoning", tokens: Number(summary.reasoning_tokens || 0) },
-          { key: "cached", label: "Cached", tokens: Number(summary.cached_tokens || 0) },
-          { key: "cache_read", label: "Cache Read", tokens: Number(summary.cache_read_tokens || 0) },
-          { key: "cache_creation", label: "Cache Create", tokens: Number(summary.cache_creation_tokens || 0) }
+          { key: "input", label: "输入", tokens: Number(summary.input_tokens || 0) },
+          { key: "output", label: "输出", tokens: Number(summary.output_tokens || 0) },
+          { key: "reasoning", label: "推理", tokens: Number(summary.reasoning_tokens || 0) },
+          { key: "cached", label: "缓存", tokens: Number(summary.cached_tokens || 0) },
+          { key: "cache_read", label: "缓存读取", tokens: Number(summary.cache_read_tokens || 0) },
+          { key: "cache_creation", label: "缓存写入", tokens: Number(summary.cache_creation_tokens || 0) }
         ];
       }
 
@@ -1542,12 +1660,12 @@
             <table class="price-table">
               <thead>
                 <tr>
-                  <th>Model</th>
-                  <th class="right">Prompt</th>
-                  <th class="right">Completion</th>
-                  <th class="right">Cache Read</th>
-                  <th class="right">Cache Create</th>
-                  <th>Source</th>
+                  <th>模型</th>
+                  <th class="right">输入价</th>
+                  <th class="right">输出价</th>
+                  <th class="right">缓存读取价</th>
+                  <th class="right">缓存写入价</th>
+                  <th>来源</th>
                   <th class="right">操作</th>
                 </tr>
               </thead>
@@ -1578,7 +1696,7 @@
           return;
         }
         if (!state.key.trim()) {
-          setNotice(els.dashboardStatus, "bad", "缺少 Management Key，无法读取概览数据。");
+          setNotice(els.dashboardStatus, "bad", "缺少管理密钥，无法读取概览数据。");
           els.dashboardMetrics.innerHTML = "";
           return;
         }
@@ -1608,44 +1726,44 @@
         const channelHealth = data.channel_health || [];
         renderMetricGrid(els.dashboardMetrics, [
           {
-            label: "Requests Today",
+            label: "今日请求数",
             value: fmtNum(today.total_calls),
-            sub: `${fmtNum(today.success_calls)} success / ${fmtNum(today.failure_calls)} failed`
+            sub: `${fmtNum(today.success_calls)} 成功 / ${fmtNum(today.failure_calls)} 失败`
           },
           {
-            label: "Success Rate",
+            label: "成功率",
             value: fmtPct(today.success_rate),
-            sub: `${fmtNum(today.zero_token_calls)} zero-token success`
+            sub: `${fmtNum(today.zero_token_calls)} 次零 Token 成功`
           },
           {
-            label: "Total Tokens",
+            label: "总 Token",
             value: fmtNum(today.total_tokens),
-            sub: `In ${fmtNum(today.input_tokens)} / Out ${fmtNum(today.output_tokens)}`
+            sub: `输入 ${fmtNum(today.input_tokens)} / 输出 ${fmtNum(today.output_tokens)}`
           },
           {
             label: "30m RPM / TPM",
             value: `${fmtNum(Math.round(Number(rolling.rpm || 0)))} / ${fmtNum(Math.round(Number(rolling.tpm || 0)))}`,
-            sub: `Last 30m calls: ${fmtNum(rolling.total_calls)}`
+            sub: `最近 30 分钟请求数：${fmtNum(rolling.total_calls)}`
           },
           {
-            label: "Avg Latency",
+            label: "平均时延",
             value: fmtMs(today.average_latency_ms),
-            sub: `Reasoning ${fmtNum(today.reasoning_tokens)}`
+            sub: `推理 Token ${fmtNum(today.reasoning_tokens)}`
           },
           {
-            label: "Cache Tokens",
+            label: "缓存 Token",
             value: fmtNum((today.cached_tokens || 0) + (today.cache_read_tokens || 0) + (today.cache_creation_tokens || 0)),
-            sub: `Read ${fmtNum(today.cache_read_tokens)} / Create ${fmtNum(today.cache_creation_tokens)}`
+            sub: `读取 ${fmtNum(today.cache_read_tokens)} / 写入 ${fmtNum(today.cache_creation_tokens)}`
           },
           {
-            label: "Unhealthy Channels",
+            label: "异常通道数",
             value: fmtNum(channelHealth.filter((item) => Number(item.failure_rate || 0) >= 0.2).length),
-            sub: `Channels observed: ${fmtNum(channelHealth.length)}`
+            sub: `观测通道：${fmtNum(channelHealth.length)}`
           },
           {
-            label: "Recent Failures",
+            label: "最近失败",
             value: fmtNum((data.recent_failures || []).length),
-            sub: "Newest failed requests in today window"
+            sub: "今日窗口内最新失败请求"
           }
         ]);
 
@@ -1653,10 +1771,10 @@
         renderTable(
           els.dashboardTopModels,
           [
-            { label: "Model" },
-            { label: "Calls", align: "right" },
-            { label: "Tokens", align: "right" },
-            { label: "Success", align: "right" }
+            { label: "模型" },
+            { label: "请求数", align: "right" },
+            { label: "Token", align: "right" },
+            { label: "成功率", align: "right" }
           ],
           (data.top_models_today || []).map((row) => [
             escapeHtml(row.model),
@@ -1669,10 +1787,10 @@
         renderTable(
           els.dashboardChannelHealth,
           [
-            { label: "Auth / Account" },
-            { label: "Calls", align: "right" },
-            { label: "Failure", align: "right" },
-            { label: "Latency", align: "right" }
+            { label: "Auth / 账号" },
+            { label: "请求数", align: "right" },
+            { label: "失败率", align: "right" },
+            { label: "时延", align: "right" }
           ],
           (data.channel_health || []).slice(0, 12).map((row) => [
             `${escapeHtml(row.auth_index || "-")}<br><span class="small">${escapeHtml(shortText(row.account_snapshot || row.auth_label_snapshot || row.source || "-", 44))}</span>`,
@@ -1680,15 +1798,15 @@
             `<span class="status-pill ${Number(row.failure_rate || 0) >= 0.2 ? "bad" : Number(row.failure_rate || 0) >= 0.05 ? "warn" : "ok"}">${escapeHtml(fmtPct(row.failure_rate))}</span>`,
             escapeHtml(fmtMs(row.average_latency_ms))
           ]),
-          "当前没有 channel health 数据。"
+          "当前没有通道健康数据。"
         );
         renderTable(
           els.dashboardRecentFailures,
           [
-            { label: "Time" },
-            { label: "Model" },
-            { label: "Status", align: "right" },
-            { label: "Summary" }
+            { label: "时间" },
+            { label: "模型" },
+            { label: "状态", align: "right" },
+            { label: "摘要" }
           ],
           (data.recent_failures || []).map((row) => [
             escapeHtml(fmtDate(row.timestamp_ms)),
@@ -1772,7 +1890,7 @@
           return;
         }
         if (!state.key.trim()) {
-          setNotice(els.monitoringStatus, "bad", "缺少 Management Key，无法读取监控数据。");
+          setNotice(els.monitoringStatus, "bad", "缺少管理密钥，无法读取监控数据。");
           els.monitoringMetrics.innerHTML = "";
           return;
         }
@@ -1853,44 +1971,44 @@
 
         renderMetricGrid(els.monitoringMetrics, [
           {
-            label: "Total Requests",
+            label: "总请求数",
             value: fmtNum(summary.total_calls),
-            sub: `${fmtNum(summary.success_calls)} success / ${fmtNum(summary.failure_calls)} failed`
+            sub: `${fmtNum(summary.success_calls)} 成功 / ${fmtNum(summary.failure_calls)} 失败`
           },
           {
-            label: "Success Rate",
+            label: "成功率",
             value: fmtPct(summary.success_rate),
-            sub: `Approx tasks ${fmtNum(summary.approx_tasks)} / fail ${fmtNum(summary.approx_task_failures)}`
+            sub: `估算任务 ${fmtNum(summary.approx_tasks)} / 失败 ${fmtNum(summary.approx_task_failures)}`
           },
           {
-            label: "Total Tokens",
+            label: "总 Token",
             value: fmtNum(summary.total_tokens),
-            sub: `In ${fmtNum(summary.input_tokens)} / Out ${fmtNum(summary.output_tokens)}`
+            sub: `输入 ${fmtNum(summary.input_tokens)} / 输出 ${fmtNum(summary.output_tokens)}`
           },
           {
-            label: "Estimated Cost",
+            label: "估算花费",
             value: fmtCost(estimatedCost),
-            sub: Object.keys(state.prices).length ? "Based on current model prices" : "No price hit yet"
+            sub: Object.keys(state.prices).length ? "基于当前模型价格表估算" : "当前没有价格命中"
           },
           {
             label: "30m RPM / TPM",
             value: `${fmtNum(Math.round(Number(summary.rpm_30m || 0)))} / ${fmtNum(Math.round(Number(summary.tpm_30m || 0)))}`,
-            sub: `Active-day avg req ${fmtNum(Math.round(Number(summary.avg_daily_requests || 0)))}`
+            sub: `活跃日平均请求 ${fmtNum(Math.round(Number(summary.avg_daily_requests || 0)))}`
           },
           {
-            label: "Avg Latency",
+            label: "平均时延",
             value: fmtMs(summary.average_latency_ms),
-            sub: `${fmtNum(summary.zero_token_calls)} zero-token success`
+            sub: `${fmtNum(summary.zero_token_calls)} 次零 Token 成功`
           },
           {
-            label: "Accounts",
+            label: "账号数",
             value: fmtNum(accountStats.length),
-            sub: `${fmtNum(apiKeyStats.length)} API keys in window`
+            sub: `窗口内 ${fmtNum(apiKeyStats.length)} 个 API Key`
           },
           {
-            label: "Realtime Events",
+            label: "近实时事件",
             value: fmtNum(events.length),
-            sub: data.events && data.events.total_count != null ? `Loaded ${fmtNum(events.length)} / total ${fmtNum(data.events.total_count)}` : "Newest page"
+            sub: data.events && data.events.total_count != null ? `已加载 ${fmtNum(events.length)} / 总计 ${fmtNum(data.events.total_count)}` : "最新一页"
           }
         ]);
 
@@ -1898,11 +2016,11 @@
         renderTable(
           els.monitoringTimeline,
           [
-            { label: "Bucket" },
-            { label: "Calls", align: "right" },
-            { label: "Success", align: "right" },
-            { label: "Failure", align: "right" },
-            { label: "Tokens", align: "right" }
+            { label: "时间桶" },
+            { label: "请求数", align: "right" },
+            { label: "成功", align: "right" },
+            { label: "失败", align: "right" },
+            { label: "Token", align: "right" }
           ],
           (data.timeline || []).slice(-24).map((row) => [
             escapeHtml(row.label || fmtDate(row.bucket_ms)),
@@ -1917,12 +2035,12 @@
         renderTable(
           els.monitoringAccountStats,
           [
-            { label: "Account" },
-            { label: "Calls", align: "right" },
-            { label: "Success", align: "right" },
-            { label: "Tokens", align: "right" },
-            { label: "Est Cost", align: "right" },
-            { label: "Last Seen", align: "right" }
+            { label: "账号" },
+            { label: "请求数", align: "right" },
+            { label: "成功率", align: "right" },
+            { label: "Token", align: "right" },
+            { label: "估算花费", align: "right" },
+            { label: "最后出现", align: "right" }
           ],
           accountStats.slice(0, 20).map((row) => [
             `${escapeHtml(shortText(row.account_snapshot || row.auth_label_snapshot || row.id || "(unknown)", 48))}<br><span class="small mono">${escapeHtml(shortText((row.auth_indices || []).join(","), 44))}</span>`,
@@ -1938,12 +2056,12 @@
         renderTable(
           els.monitoringApiKeyStats,
           [
-            { label: "API Key Hash" },
-            { label: "Account" },
-            { label: "Calls", align: "right" },
-            { label: "Success", align: "right" },
-            { label: "Tokens", align: "right" },
-            { label: "Est Cost", align: "right" }
+            { label: "API Key 哈希" },
+            { label: "账号" },
+            { label: "请求数", align: "right" },
+            { label: "成功率", align: "right" },
+            { label: "Token", align: "right" },
+            { label: "估算花费", align: "right" }
           ],
           apiKeyStats.slice(0, 20).map((row) => [
             `<code>${escapeHtml(shortText(row.api_key_hash || row.id || "-", 18))}</code>`,
@@ -1959,13 +2077,13 @@
         renderTable(
           els.monitoringModelStats,
           [
-            { label: "Model" },
-            { label: "Calls", align: "right" },
-            { label: "Success", align: "right" },
-            { label: "Input", align: "right" },
-            { label: "Output", align: "right" },
-            { label: "Total", align: "right" },
-            { label: "Est Cost", align: "right" }
+            { label: "模型" },
+            { label: "请求数", align: "right" },
+            { label: "成功率", align: "right" },
+            { label: "输入", align: "right" },
+            { label: "输出", align: "right" },
+            { label: "总计", align: "right" },
+            { label: "估算花费", align: "right" }
           ],
           modelStats.slice(0, 40).map((row) => [
             escapeHtml(row.model || "-"),
@@ -1982,11 +2100,11 @@
         renderTable(
           els.monitoringRecentFailures,
           [
-            { label: "Time" },
-            { label: "Account / Auth" },
-            { label: "Model" },
-            { label: "Status", align: "right" },
-            { label: "Summary" }
+            { label: "时间" },
+            { label: "账号 / Auth" },
+            { label: "模型" },
+            { label: "状态", align: "right" },
+            { label: "摘要" }
           ],
           (data.recent_failures || []).map((row) => [
             escapeHtml(fmtDate(row.timestamp_ms)),
@@ -2016,7 +2134,7 @@
           pills.push(`检索: ${state.filters.searchQuery}`);
         }
         if (state.filters.searchApiKeyHash) {
-          pills.push(`API Key Hash: ${state.filters.searchApiKeyHash}`);
+          pills.push(`API Key 哈希: ${state.filters.searchApiKeyHash}`);
         }
         if (state.filters.failedOnly) {
           pills.push("只看失败");
@@ -2050,14 +2168,14 @@
         renderTable(
           els.monitoringEvents,
           [
-            { label: "Time" },
-            { label: "Account / Key" },
-            { label: "Model / Endpoint" },
-            { label: "Status" },
-            { label: "Tokens", align: "right" },
-            { label: "Latency", align: "right" },
-            { label: "Est Cost", align: "right" },
-            { label: "Summary" }
+            { label: "时间" },
+            { label: "账号 / Key" },
+            { label: "模型 / 接口" },
+            { label: "状态" },
+            { label: "Token", align: "right" },
+            { label: "时延", align: "right" },
+            { label: "估算花费", align: "right" },
+            { label: "摘要" }
           ],
           events.map((row) => {
             const effectiveModel = row.resolved_model || row.model;
@@ -2067,8 +2185,8 @@
               `${escapeHtml(shortText(row.account_snapshot || row.auth_index || "-", 24))}<br><span class="small mono">${escapeHtml(shortText(row.api_key_hash || "-", 22))}</span>`,
               `${escapeHtml(shortText(effectiveModel || "-", 28))}<br><span class="small">${escapeHtml(shortText(row.endpoint || row.path || "-", 36))}</span>`,
               row.failed
-                ? `<span class="status-pill bad">${escapeHtml(row.fail_status_code == null ? "failed" : String(row.fail_status_code))}</span>`
-                : `<span class="status-pill ok">ok</span>`,
+                ? `<span class="status-pill bad">${escapeHtml(row.fail_status_code == null ? "失败" : String(row.fail_status_code))}</span>`
+                : `<span class="status-pill ok">成功</span>`,
               escapeHtml(fmtNum(row.total_tokens)),
               escapeHtml(fmtMs(row.latency_ms || row.ttft_ms)),
               escapeHtml(fmtCost(estimatedCost)),
@@ -2084,7 +2202,7 @@
           return;
         }
         if (!state.key.trim()) {
-          setNotice(els.pricesStatus, "bad", "缺少 Management Key，无法读取模型价格。");
+          setNotice(els.pricesStatus, "bad", "缺少管理密钥，无法读取模型价格。");
           return;
         }
         state.loading.prices = true;
@@ -2107,7 +2225,7 @@
           state.prices = payload.prices || {};
           state.priceRows = mapToPriceRows(state.prices);
           renderPricesTable();
-          setNotice(els.pricesStatus, "ok", `同步完成：imported ${fmtNum(payload.imported)}，skipped ${fmtNum(payload.skipped)}。`);
+          setNotice(els.pricesStatus, "ok", `同步完成：导入 ${fmtNum(payload.imported)}，跳过 ${fmtNum(payload.skipped)}。`);
         } catch (error) {
           setNotice(els.pricesStatus, "bad", friendlyError(error));
         }
@@ -2264,17 +2382,18 @@
         syncConnectionFormFromState();
         syncMonitoringFormFromState();
         bindEvents();
+        syncThemeFromHost();
         renderConnectionSummary();
         if (state.key.trim()) {
           setConnectionStatus("warn", "尚未测试，本页会自动尝试取数");
         } else {
-          setConnectionStatus("warn", "等待填写 Management Key");
+          setConnectionStatus("warn", "等待填写管理密钥");
         }
         switchTab(state.tab);
         if (!state.key.trim()) {
-          setNotice(els.dashboardStatus, "bad", "缺少 Management Key，无法读取概览数据。");
-          setNotice(els.monitoringStatus, "bad", "缺少 Management Key，无法读取监控数据。");
-          setNotice(els.pricesStatus, "bad", "缺少 Management Key，无法读取模型价格。");
+          setNotice(els.dashboardStatus, "bad", "缺少管理密钥，无法读取概览数据。");
+          setNotice(els.monitoringStatus, "bad", "缺少管理密钥，无法读取监控数据。");
+          setNotice(els.pricesStatus, "bad", "缺少管理密钥，无法读取模型价格。");
         }
       }
 

@@ -3,10 +3,10 @@
   "plugins": [
     {
       "id": "cpa-usage-stats",
-      "name": "CPA Usage Stats",
-      "description": "CPA-Manager-Plus style usage statistics and dashboards as a self-contained CLIProxyAPI plugin. Captures per-request usage via the usage_plugin capability and serves Dashboard / Monitoring / Usage endpoints under /v0/management.",
+      "name": "请求监控",
+      "description": "以独立 CLIProxyAPI 插件方式提供请求监控。按账号和时间范围追踪调用规模、成功失败、Token 结构和估算花费，并提供接近请求日志的近实时事件表。",
       "author": "Bahamutzd",
-      "version": "0.2.1",
+      "version": "0.2.3",
       "repository": "https://github.com/Bahamutzd/cpa-usage-stats-plugin",
       "homepage": "https://github.com/Bahamutzd/cpa-usage-stats-plugin",
       "license": "MIT",

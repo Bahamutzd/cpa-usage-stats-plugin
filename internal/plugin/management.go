@@ -95,8 +95,8 @@ func handleManagementRegister(_ []byte) []byte {
 				// with a hash router so navigation never issues new sub-path
 				// requests — exact-matched resource routes can't serve a tree.
 				Path:        "/index",
-				Menu:        "Usage Stats",
-				Description: "CPA-Manager-Plus style usage statistics dashboard.",
+				Menu:        "请求监控",
+				Description: "按账号和时间范围追踪调用规模、成功失败、Token 结构和估算花费。",
 			},
 		},
 	})
