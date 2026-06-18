@@ -1,13 +1,14 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import { HashRouter } from "react-router-dom";
-import App from "./App";
-import "./styles/index.css";
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import '@/styles/global.scss';
+import App from './App.tsx';
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <HashRouter>
-      <App />
-    </HashRouter>
-  </React.StrictMode>
+document.title = 'CPA Usage Stats';
+document.documentElement.setAttribute('translate', 'no');
+document.documentElement.classList.add('notranslate');
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>
 );

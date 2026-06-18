@@ -22,7 +22,7 @@ const pluginID = "cpa-usage-stats"
 // management UI display.
 var metadata = pluginMetadata{
 	Name:             pluginID,
-	Version:          "0.1.4",
+	Version:          "0.2.0",
 	Author:           "router-for-me",
 	GitHubRepository: "https://github.com/Bahamutzd/cpa-usage-stats-plugin",
 	Logo:             "",
