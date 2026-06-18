@@ -1,0 +1,101 @@
+name: ci
+
+# Keep release semantics isolated in release.yml. This workflow only validates
+# that main-branch and PR changes still pass tests and can build the shared
+# library on every target platform the release pipeline ships.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PLUGIN_ID: cpa-usage-stats
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+
+      - name: Resolve module dependencies
+        run: go mod tidy
+
+      - name: Run unit tests
+        run: go test ./...
+
+  build:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            ext: so
+            cc: gcc
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            ext: so
+            cc: aarch64-linux-gnu-gcc
+            apt: gcc-aarch64-linux-gnu
+          - os: macos-14
+            goos: darwin
+            goarch: amd64
+            ext: dylib
+            cc: "clang -arch x86_64"
+          - os: macos-14
+            goos: darwin
+            goarch: arm64
+            ext: dylib
+            cc: clang
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            ext: dll
+            cc: gcc
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+
+      - name: Resolve module dependencies
+        run: go mod tidy
+
+      - name: Install cross compiler
+        if: matrix.apt != ''
+        run: sudo apt-get update && sudo apt-get install -y ${{ matrix.apt }}
+
+      - name: Build shared library
+        shell: bash
+        env:
+          CGO_ENABLED: 1
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CC: ${{ matrix.cc }}
+        run: |
+          mkdir -p dist
+          OUTPUT="dist/${PLUGIN_ID}.${{ matrix.ext }}"
+          go build -trimpath -buildmode=c-shared -o "${OUTPUT}" .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PLUGIN_ID }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/${{ env.PLUGIN_ID }}.${{ matrix.ext }}
+          if-no-files-found: error
