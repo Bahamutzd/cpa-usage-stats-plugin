@@ -145,4 +145,5 @@ jobs:
 
       - name: Skip summary
         if: steps.version.outputs.should_tag != 'true'
-        run: echo "Skip auto tag: ${{ steps.version.outputs.reason }}"
+        run: |
+          echo "Skip auto tag: ${{ steps.version.outputs.reason }}"
