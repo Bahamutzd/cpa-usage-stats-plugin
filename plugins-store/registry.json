@@ -6,7 +6,7 @@
       "name": "CPA Usage Stats",
       "description": "CPA-Manager-Plus style usage statistics and dashboards as a self-contained CLIProxyAPI plugin. Captures per-request usage via the usage_plugin capability and serves Dashboard / Monitoring / Usage endpoints under /v0/management.",
       "author": "Bahamutzd",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "repository": "https://github.com/Bahamutzd/cpa-usage-stats-plugin",
       "homepage": "https://github.com/Bahamutzd/cpa-usage-stats-plugin",
       "license": "MIT",

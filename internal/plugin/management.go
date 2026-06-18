@@ -84,11 +84,17 @@ func handleManagementRegister(_ []byte) []byte {
 		},
 		Resources: []resourceRoute{
 			{
-				// The single "/" resource serves the whole SPA. Because plugin
-				// resource routes are also exact-matched, the SPA must be a
-				// single self-contained HTML file (inlined JS/CSS) using a hash
-				// router so navigation never issues new sub-path requests.
-				Path:        "/",
+				// Path cannot be "/" — pluginhost.normalizeResourceRoute does
+				// strings.TrimRight(path, "/") which turns "/" into "" and then
+				// rejects it, so the resource route never registers and the
+				// management UI shows no menu entry. Use "/index" instead; the
+				// menu link opens /v0/resource/plugins/cpa-usage-stats/index and
+				// the handler still serves the SPA (it matches by resource base
+				// prefix, not the exact trailing segment).
+				// The SPA is a single self-contained HTML file (inlined JS/CSS)
+				// with a hash router so navigation never issues new sub-path
+				// requests — exact-matched resource routes can't serve a tree.
+				Path:        "/index",
 				Menu:        "Usage Stats",
 				Description: "CPA-Manager-Plus style usage statistics dashboard.",
 			},
