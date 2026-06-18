@@ -1,816 +1,121 @@
-import {
-  ReactNode,
-  SVGProps,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react';
+import { ReactNode, useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@/components/ui/Button';
-import { PageTransition } from '@/components/common/PageTransition';
 import { MainRoutes } from '@/router/MainRoutes';
-import {
-  IconSidebarAuthFiles,
-  IconSidebarConfig,
-  IconSidebarDashboard,
-  IconSidebarInspection,
-  IconSidebarLogs,
-  IconSidebarMonitor,
-  IconSidebarOauth,
-  IconSidebarPlugins,
-  IconSidebarProviders,
-  IconSidebarQuota,
-  IconSidebarSystem,
-} from '@/components/ui/icons';
+import { IconSidebarDashboard, IconSidebarMonitor } from '@/components/ui/icons';
 import { INLINE_LOGO_JPEG } from '@/assets/logoInline';
-import {
-  useAuthStore,
-  useConfigStore,
-  useLanguageStore,
-  useNotificationStore,
-  useThemeStore,
-} from '@/stores';
-import { pluginsApi } from '@/services/api';
-import {
-  collectPluginResourceEntries,
-  isPluginManagementNavVisible,
-  isPluginResourceNavVisible,
-  PLUGIN_RESOURCES_REFRESH_EVENT,
-  resolvePluginAssetURL,
-  type PluginResourceEntry,
-} from '@/features/plugins/pluginResources';
-import { triggerHeaderRefresh } from '@/hooks/useHeaderRefresh';
-import { usePanelFeatureAvailability } from '@/hooks/usePanelFeatureAvailability';
-import { isFileLogsAvailable } from '@/features/logs/logFeatureAvailability';
-import { LANGUAGE_LABEL_KEYS, LANGUAGE_ORDER, STORAGE_KEY_SIDEBAR } from '@/utils/constants';
-import { isSupportedLanguage } from '@/utils/language';
+import { useThemeStore } from '@/stores';
+import { STORAGE_KEY_SIDEBAR } from '@/utils/constants';
 import type { Theme } from '@/types';
 
 const SIDEBAR_ICON_SIZE = 20;
 
-const sidebarIcons: Record<string, ReactNode> = {
-  dashboard: <IconSidebarDashboard size={SIDEBAR_ICON_SIZE} />,
-  aiProviders: <IconSidebarProviders size={SIDEBAR_ICON_SIZE} />,
-  authFiles: <IconSidebarAuthFiles size={SIDEBAR_ICON_SIZE} />,
-  oauth: <IconSidebarOauth size={SIDEBAR_ICON_SIZE} />,
-  quota: <IconSidebarQuota size={SIDEBAR_ICON_SIZE} />,
-  codexInspection: <IconSidebarInspection size={SIDEBAR_ICON_SIZE} />,
-  monitoring: <IconSidebarMonitor size={SIDEBAR_ICON_SIZE} />,
-  plugins: <IconSidebarPlugins size={SIDEBAR_ICON_SIZE} />,
-  config: <IconSidebarConfig size={SIDEBAR_ICON_SIZE} />,
-  logs: <IconSidebarLogs size={SIDEBAR_ICON_SIZE} />,
-  system: <IconSidebarSystem size={SIDEBAR_ICON_SIZE} />,
-};
-
-// Header action icons - smaller size for header buttons
-const headerIconProps: SVGProps<SVGSVGElement> = {
-  width: 16,
-  height: 16,
-  viewBox: '0 0 24 24',
-  fill: 'none',
-  stroke: 'currentColor',
-  strokeWidth: 2,
-  strokeLinecap: 'round',
-  strokeLinejoin: 'round',
-  'aria-hidden': 'true',
-  focusable: 'false',
-};
-
-const headerIcons = {
-  refresh: (
-    <svg {...headerIconProps}>
-      <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
-      <path d="M21 3v5h-5" />
-    </svg>
-  ),
-  menu: (
-    <svg {...headerIconProps}>
-      <path d="M4 7h16" />
-      <path d="M4 12h16" />
-      <path d="M4 17h16" />
-    </svg>
-  ),
-  close: (
-    <svg {...headerIconProps}>
-      <path d="M18 6 6 18" />
-      <path d="m6 6 12 12" />
-    </svg>
-  ),
-  sidebarCollapse: (
-    <svg {...headerIconProps}>
-      <rect x="3" y="4" width="18" height="16" rx="2" />
-      <path d="M9 4v16" />
-      <path d="m16 9-3 3 3 3" />
-    </svg>
-  ),
-  sidebarExpand: (
-    <svg {...headerIconProps}>
-      <rect x="3" y="4" width="18" height="16" rx="2" />
-      <path d="M9 4v16" />
-      <path d="m13 9 3 3-3 3" />
-    </svg>
-  ),
-  language: (
-    <svg {...headerIconProps}>
-      <circle cx="12" cy="12" r="10" />
-      <path d="M2 12h20" />
-      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-    </svg>
-  ),
-  sun: (
-    <svg {...headerIconProps}>
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2v2" />
-      <path d="M12 20v2" />
-      <path d="m4.93 4.93 1.41 1.41" />
-      <path d="m17.66 17.66 1.41 1.41" />
-      <path d="M2 12h2" />
-      <path d="M20 12h2" />
-      <path d="m6.34 17.66-1.41 1.41" />
-      <path d="m19.07 4.93-1.41 1.41" />
-    </svg>
-  ),
-  moon: (
-    <svg {...headerIconProps}>
-      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z" />
-    </svg>
-  ),
-  autoTheme: (
-    <svg {...headerIconProps}>
-      <rect x="4" y="5" width="16" height="11" rx="2" />
-      <path d="M8 21h8" />
-      <path d="M12 16v5" />
-      <path d="M9 11a3 3 0 0 1 5.2-2" />
-      <path d="M14.5 7v2h-2" />
-      <path d="M15 11a3 3 0 0 1-5.2 2" />
-      <path d="M9.5 15v-2h2" />
-    </svg>
-  ),
-  logout: (
-    <svg {...headerIconProps}>
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <path d="m16 17 5-5-5-5" />
-      <path d="M21 12H9" />
-    </svg>
-  ),
-};
-
-const THEME_OPTIONS: Array<{
-  key: Theme;
-  labelKey: string;
-  icon: ReactNode;
-}> = [
-  { key: 'auto', labelKey: 'theme.auto', icon: headerIcons.autoTheme },
-  { key: 'white', labelKey: 'theme.white', icon: headerIcons.sun },
-  { key: 'dark', labelKey: 'theme.dark', icon: headerIcons.moon },
-];
-
-function PluginSidebarIcon({ src }: { src: string }) {
-  const [failed, setFailed] = useState(false);
-  const showImage = Boolean(src) && !failed;
-
-  return showImage ? (
-    <img src={src} alt="" onError={() => setFailed(true)} />
-  ) : (
-    <IconSidebarPlugins size={SIDEBAR_ICON_SIZE} />
-  );
-}
-
-type NavItem = {
-  path: string;
-  label: string;
-  shortLabel?: string;
-  icon: ReactNode;
-  exact?: boolean;
-};
+type NavItem = { path: string; label: string; shortLabel: string; icon: ReactNode };
 
 export function MainLayout() {
   const { t } = useTranslation();
-  const { showNotification } = useNotificationStore();
   const location = useLocation();
-
-  const logout = useAuthStore((state) => state.logout);
-  const connectionStatus = useAuthStore((state) => state.connectionStatus);
-  const apiBase = useAuthStore((state) => state.apiBase);
-  const supportsPlugin = useAuthStore((state) => state.supportsPlugin);
-
-  const config = useConfigStore((state) => state.config);
-  const fetchConfig = useConfigStore((state) => state.fetchConfig);
-  const clearCache = useConfigStore((state) => state.clearCache);
-  const featureAvailability = usePanelFeatureAvailability();
-
   const theme = useThemeStore((state) => state.theme);
   const setTheme = useThemeStore((state) => state.setTheme);
-  const language = useLanguageStore((state) => state.language);
-  const setLanguage = useLanguageStore((state) => state.setLanguage);
-
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    try {
-      return localStorage.getItem(STORAGE_KEY_SIDEBAR) === 'true';
-    } catch {
-      return false;
-    }
+    try { return localStorage.getItem(STORAGE_KEY_SIDEBAR) === 'true'; }
+    catch { return false; }
   });
-  const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
-  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
-  const [pluginResources, setPluginResources] = useState<PluginResourceEntry[]>([]);
   const contentRef = useRef<HTMLDivElement | null>(null);
-  const languageMenuRef = useRef<HTMLDivElement | null>(null);
-  const themeMenuRef = useRef<HTMLDivElement | null>(null);
   const headerRef = useRef<HTMLElement | null>(null);
 
-  const fullBrandName = 'CPA Manager Plus';
-  const abbrBrandName = t('title.abbr');
-  const isLogsPage = location.pathname.startsWith('/logs');
-  const isPluginResourcePage = location.pathname.startsWith('/plugin-pages');
+  const fullBrandName = 'CPA Usage Stats';
   const showSidebarLabels = !sidebarCollapsed || sidebarOpen;
-  const pluginControlMenuVisible = isPluginManagementNavVisible({ supportsPlugin });
-  const configPluginsEnabled = config?.pluginsEnabled;
 
-  // 将顶部悬浮控制区高度写入 CSS 变量，供移动端粘性元素和浮层避让。
   useLayoutEffect(() => {
-    const updateHeaderHeight = () => {
-      const height = headerRef.current?.offsetHeight;
-      if (height) {
-        document.documentElement.style.setProperty('--header-height', `${height}px`);
-      }
+    const update = () => {
+      const h = headerRef.current?.offsetHeight;
+      if (h) document.documentElement.style.setProperty('--header-height', `${h}px`);
     };
-
-    updateHeaderHeight();
-
-    const resizeObserver =
-      typeof ResizeObserver !== 'undefined' && headerRef.current
-        ? new ResizeObserver(updateHeaderHeight)
-        : null;
-    if (resizeObserver && headerRef.current) {
-      resizeObserver.observe(headerRef.current);
-    }
-
-    window.addEventListener('resize', updateHeaderHeight);
-
-    return () => {
-      if (resizeObserver) {
-        resizeObserver.disconnect();
-      }
-      window.removeEventListener('resize', updateHeaderHeight);
-    };
+    update();
+    const ro = new ResizeObserver(update);
+    if (headerRef.current) ro.observe(headerRef.current);
+    return () => ro.disconnect();
   }, []);
 
-  // 将主内容区的中心点写入 CSS 变量，供底部浮层（配置面板操作栏、提供商导航）对齐到内容区
   useLayoutEffect(() => {
-    const updateContentCenter = () => {
+    const update = () => {
       const el = contentRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      document.documentElement.style.setProperty('--content-center-x', `${centerX}px`);
+      document.documentElement.style.setProperty('--content-center-x', `${rect.left + rect.width / 2}px`);
     };
-
-    updateContentCenter();
-
-    const resizeObserver =
-      typeof ResizeObserver !== 'undefined' && contentRef.current
-        ? new ResizeObserver(updateContentCenter)
-        : null;
-
-    if (resizeObserver && contentRef.current) {
-      resizeObserver.observe(contentRef.current);
-    }
-
-    window.addEventListener('resize', updateContentCenter);
-
-    return () => {
-      if (resizeObserver) {
-        resizeObserver.disconnect();
-      }
-      window.removeEventListener('resize', updateContentCenter);
-      document.documentElement.style.removeProperty('--content-center-x');
-    };
+    update();
+    const ro = new ResizeObserver(update);
+    if (contentRef.current) ro.observe(contentRef.current);
+    return () => ro.disconnect();
   }, []);
 
-  useEffect(() => {
-    if (!languageMenuOpen) {
-      return;
-    }
+  const handleThemeToggle = useCallback(() => {
+    const next: Theme = theme === 'dark' ? 'white' : 'dark';
+    setTheme(next);
+  }, [theme, setTheme]);
 
-    const handlePointerDown = (event: MouseEvent) => {
-      if (!languageMenuRef.current?.contains(event.target as Node)) {
-        setLanguageMenuOpen(false);
-      }
-    };
+  const navSections: NavItem[][] = [[
+    { path: '/', label: t('nav.dashboard'), shortLabel: t('nav.dashboard'), icon: <IconSidebarDashboard size={SIDEBAR_ICON_SIZE} /> },
+    { path: '/monitoring', label: t('nav.monitoring_center'), shortLabel: t('nav.monitoring_center'), icon: <IconSidebarMonitor size={SIDEBAR_ICON_SIZE} /> },
+    { path: '/model-prices', label: t('nav.model_prices', { defaultValue: 'Model Prices' }), shortLabel: t('nav.model_prices', { defaultValue: 'Prices' }), icon: <IconSidebarMonitor size={SIDEBAR_ICON_SIZE} /> },
+  ]].filter(s => s.length > 0);
 
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setLanguageMenuOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handlePointerDown);
-    document.addEventListener('keydown', handleEscape);
-
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [languageMenuOpen]);
-
-  useEffect(() => {
-    if (!themeMenuOpen) {
-      return;
-    }
-
-    const handlePointerDown = (event: MouseEvent) => {
-      if (!themeMenuRef.current?.contains(event.target as Node)) {
-        setThemeMenuOpen(false);
-      }
-    };
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setThemeMenuOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handlePointerDown);
-    document.addEventListener('keydown', handleEscape);
-
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [themeMenuOpen]);
-
-  const toggleLanguageMenu = useCallback(() => {
-    setLanguageMenuOpen((prev) => !prev);
-    setThemeMenuOpen(false);
-  }, []);
-
-  const toggleThemeMenu = useCallback(() => {
-    setThemeMenuOpen((prev) => !prev);
-    setLanguageMenuOpen(false);
-  }, []);
-
-  const handleThemeSelect = useCallback(
-    (nextTheme: Theme) => {
-      setTheme(nextTheme);
-      setThemeMenuOpen(false);
-    },
-    [setTheme]
-  );
-
-  const handleLanguageSelect = useCallback(
-    (nextLanguage: string) => {
-      if (!isSupportedLanguage(nextLanguage)) {
-        return;
-      }
-      setLanguage(nextLanguage);
-      setLanguageMenuOpen(false);
-    },
-    [setLanguage]
-  );
-
-  useEffect(() => {
-    fetchConfig().catch(() => {
-      // ignore initial failure; login flow会提示
-    });
-  }, [fetchConfig]);
-
-  const loadPluginResources = useCallback(async () => {
-    if (connectionStatus !== 'connected' || !supportsPlugin) {
-      setPluginResources([]);
-      return;
-    }
-
-    try {
-      const plugins = await pluginsApi.list();
-      setPluginResources(
-        isPluginResourceNavVisible({
-          supportsPlugin,
-          pluginsEnabled: plugins.pluginsEnabled,
-        })
-          ? collectPluginResourceEntries(plugins.plugins)
-          : []
-      );
-    } catch {
-      setPluginResources([]);
-    }
-  }, [connectionStatus, supportsPlugin]);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void loadPluginResources();
-    }, 0);
-
-    window.addEventListener(PLUGIN_RESOURCES_REFRESH_EVENT, loadPluginResources);
-
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener(PLUGIN_RESOURCES_REFRESH_EVENT, loadPluginResources);
-    };
-  }, [apiBase, configPluginsEnabled, loadPluginResources]);
-
-  const fileLogsAvailable = isFileLogsAvailable(config);
-  const navShortLabel = (key: string, fallback: string) => {
-    const shortKey = `${key}_short`;
-    const label = t(shortKey, { defaultValue: fallback });
-    return label === shortKey ? fallback : label;
-  };
-  const operationNavItems: NavItem[] = [
-    ...(featureAvailability.requestMonitoringAvailable
-      ? [
-          {
-            path: '/monitoring',
-            label: t('nav.monitoring_center'),
-            shortLabel: navShortLabel('nav.monitoring_center', t('nav.monitoring_center')),
-            icon: sidebarIcons.monitoring,
-            exact: true,
-          },
-        ]
-      : []),
-    ...(fileLogsAvailable
-      ? [
-          {
-            path: '/logs',
-            label: t('nav.logs'),
-            shortLabel: navShortLabel('nav.logs', t('nav.logs')),
-            icon: sidebarIcons.logs,
-          },
-        ]
-      : []),
-  ];
-  const pluginControlNavItems: NavItem[] = pluginControlMenuVisible
-    ? [
-        {
-          path: '/plugins',
-          label: t('nav.plugins'),
-          shortLabel: navShortLabel('nav.plugins', t('nav.plugins')),
-          icon: sidebarIcons.plugins,
-        },
-      ]
-    : [];
-  const pluginResourceNavItems: NavItem[] = pluginControlMenuVisible
-    ? pluginResources.map((resource) => ({
-        path: resource.route,
-        label: resource.label,
-        shortLabel: resource.label,
-        icon: (
-          <PluginSidebarIcon src={resolvePluginAssetURL(resource.pluginLogo, apiBase)} />
-        ),
-      }))
-    : [];
-  const navSections: NavItem[][] = [
-    [
-      {
-        path: '/',
-        label: t('nav.dashboard'),
-        shortLabel: navShortLabel('nav.dashboard', t('nav.dashboard')),
-        icon: sidebarIcons.dashboard,
-      },
-    ],
-    [
-      {
-        path: '/config',
-        label: t('nav.config_management'),
-        shortLabel: navShortLabel('nav.config_management', t('nav.config_management')),
-        icon: sidebarIcons.config,
-      },
-      {
-        path: '/ai-providers',
-        label: t('nav.ai_providers'),
-        shortLabel: navShortLabel('nav.ai_providers', t('nav.ai_providers')),
-        icon: sidebarIcons.aiProviders,
-      },
-      ...pluginControlNavItems,
-    ],
-    [
-      {
-        path: '/auth-files',
-        label: t('nav.auth_files'),
-        shortLabel: navShortLabel('nav.auth_files', t('nav.auth_files')),
-        icon: sidebarIcons.authFiles,
-      },
-      {
-        path: '/oauth',
-        label: t('nav.oauth', { defaultValue: 'OAuth' }),
-        shortLabel: navShortLabel('nav.oauth', t('nav.oauth', { defaultValue: 'OAuth' })),
-        icon: sidebarIcons.oauth,
-      },
-      {
-        path: '/quota',
-        label: t('nav.quota_management'),
-        shortLabel: navShortLabel('nav.quota_management', t('nav.quota_management')),
-        icon: sidebarIcons.quota,
-      },
-      {
-        path: '/codex-inspection',
-        label: t('nav.codex_inspection'),
-        shortLabel: navShortLabel('nav.codex_inspection', t('nav.codex_inspection')),
-        icon: sidebarIcons.codexInspection,
-      },
-    ],
-    operationNavItems,
-    pluginResourceNavItems,
-    [
-      {
-        path: '/system',
-        label: t('nav.system_info'),
-        shortLabel: navShortLabel('nav.system_info', t('nav.system_info')),
-        icon: sidebarIcons.system,
-      },
-    ],
-  ].filter((section) => section.length > 0);
   const navItems = navSections.flat();
-  const navOrder = navItems.map((item) => item.path);
-  const getRouteOrder = (pathname: string) => {
-    const trimmedPath =
-      pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
-    const normalizedPath = trimmedPath === '/dashboard' ? '/' : trimmedPath;
+  const currentPath = location.pathname === '/dashboard' ? '/' : location.pathname;
+  const matchesNav = (item: NavItem, pathname: string) => item.path === '/' ? pathname === '/' : pathname === item.path || pathname.startsWith(`${item.path}/`);
+  const activeNav = [...navItems].sort((a, b) => b.path.length - a.path.length).find(item => matchesNav(item, currentPath)) ?? navItems[0];
+  const currentLabel = activeNav?.label ?? fullBrandName;
 
-    const aiProvidersIndex = navOrder.indexOf('/ai-providers');
-    if (aiProvidersIndex !== -1) {
-      if (normalizedPath === '/ai-providers') return aiProvidersIndex;
-      if (normalizedPath.startsWith('/ai-providers/')) {
-        if (normalizedPath.startsWith('/ai-providers/gemini')) return aiProvidersIndex + 0.1;
-        if (normalizedPath.startsWith('/ai-providers/codex')) return aiProvidersIndex + 0.2;
-        if (normalizedPath.startsWith('/ai-providers/claude')) return aiProvidersIndex + 0.3;
-        if (normalizedPath.startsWith('/ai-providers/vertex')) return aiProvidersIndex + 0.4;
-        if (normalizedPath.startsWith('/ai-providers/openai')) return aiProvidersIndex + 0.6;
-        return aiProvidersIndex + 0.05;
-      }
-    }
-
-    const authFilesIndex = navOrder.indexOf('/auth-files');
-    if (authFilesIndex !== -1) {
-      if (normalizedPath === '/auth-files') return authFilesIndex;
-      if (normalizedPath.startsWith('/auth-files/')) {
-        if (normalizedPath.startsWith('/auth-files/oauth-excluded')) return authFilesIndex + 0.1;
-        if (normalizedPath.startsWith('/auth-files/oauth-model-alias')) return authFilesIndex + 0.2;
-        return authFilesIndex + 0.05;
-      }
-    }
-
-    const exactIndex = navOrder.indexOf(normalizedPath);
-    if (exactIndex !== -1) return exactIndex;
-    const nestedIndex = navOrder.findIndex(
-      (path) => path !== '/' && normalizedPath.startsWith(`${path}/`)
-    );
-    return nestedIndex === -1 ? null : nestedIndex;
-  };
-
-  const getTransitionVariant = useCallback((fromPathname: string, toPathname: string) => {
-    const normalize = (pathname: string) => {
-      const trimmed =
-        pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
-      return trimmed === '/dashboard' ? '/' : trimmed;
-    };
-
-    const from = normalize(fromPathname);
-    const to = normalize(toPathname);
-    const isAuthFiles = (pathname: string) =>
-      pathname === '/auth-files' || pathname.startsWith('/auth-files/');
-    const isAiProviders = (pathname: string) =>
-      pathname === '/ai-providers' || pathname.startsWith('/ai-providers/');
-    if (isAuthFiles(from) && isAuthFiles(to)) return 'ios';
-    if (isAiProviders(from) && isAiProviders(to)) return 'ios';
-    return 'none';
-  }, []);
-
-  const handleRefreshAll = async () => {
-    clearCache();
-    const results = await Promise.allSettled([
-      fetchConfig(undefined, true),
-      loadPluginResources(),
-      triggerHeaderRefresh(),
-    ]);
-    const rejected = results.find((result) => result.status === 'rejected');
-    if (rejected && rejected.status === 'rejected') {
-      const reason = rejected.reason;
-      const message =
-        typeof reason === 'string' ? reason : reason instanceof Error ? reason.message : '';
-      showNotification(
-        `${t('notification.refresh_failed')}${message ? `: ${message}` : ''}`,
-        'error'
-      );
-      return;
-    }
-    showNotification(t('notification.data_refreshed'), 'success');
-  };
-  const mobileSidebarToggleLabel = sidebarOpen
-    ? t('sidebar.toggle_collapse', { defaultValue: 'Close navigation' })
-    : t('sidebar.toggle_expand', { defaultValue: 'Open navigation' });
-  const normalizedLocationPath =
-    location.pathname.length > 1 && location.pathname.endsWith('/')
-      ? location.pathname.slice(0, -1)
-      : location.pathname;
-  const currentPath = normalizedLocationPath === '/dashboard' ? '/' : normalizedLocationPath;
-  const matchesNavPath = (item: NavItem, pathname: string) =>
-    item.path === '/' || item.exact
-      ? pathname === item.path
-      : pathname === item.path || pathname.startsWith(`${item.path}/`);
-  const activeNavItem =
-    [...navItems]
-      .sort((a, b) => b.path.length - a.path.length)
-      .find((item) => matchesNavPath(item, currentPath)) ?? navItems[0];
-  const currentRouteLabel = activeNavItem?.label ?? fullBrandName;
+  const mobileToggleLabel = sidebarOpen ? 'Close navigation' : 'Open navigation';
 
   return (
-    <div
-      className={[
-        'app-shell',
-        sidebarCollapsed ? 'sidebar-is-collapsed' : '',
-        isPluginResourcePage ? 'plugin-resource-shell' : '',
-      ]
-        .filter(Boolean)
-        .join(' ')}
-    >
+    <div className={['app-shell', sidebarCollapsed ? 'sidebar-is-collapsed' : ''].filter(Boolean).join(' ')}>
       <header className="main-header" ref={headerRef}>
         <div className="navbar">
           <div className="navbar-left">
-            <button
-              type="button"
-              className="hamburger-container"
+            <button type="button" className="hamburger-container"
               onClick={() => {
-                if (window.matchMedia('(max-width: 768px)').matches) {
-                  setSidebarOpen((prev) => !prev);
-                  return;
-                }
-                setSidebarCollapsed((prev) => {
-                  const next = !prev;
-                  try {
-                    localStorage.setItem(STORAGE_KEY_SIDEBAR, String(next));
-                  } catch {
-                    /* ignore storage failures */
-                  }
-                  return next;
-                });
+                if (window.matchMedia('(max-width: 768px)').matches) { setSidebarOpen(p => !p); return; }
+                setSidebarCollapsed(p => { const n = !p; try { localStorage.setItem(STORAGE_KEY_SIDEBAR, String(n)); } catch {} return n; });
               }}
-              title={mobileSidebarToggleLabel}
-              aria-label={mobileSidebarToggleLabel}
-            >
-              {sidebarOpen
-                ? headerIcons.close
-                : sidebarCollapsed
-                  ? headerIcons.sidebarExpand
-                  : headerIcons.sidebarCollapse}
+              title={mobileToggleLabel} aria-label={mobileToggleLabel}>
+              {sidebarOpen ? <CloseIcon /> : sidebarCollapsed ? <ExpandIcon /> : <CollapseIcon />}
             </button>
-
-            <nav
-              className="app-breadcrumb"
-              aria-label={t('common.navigation', { defaultValue: 'Navigation' })}
-            >
-              <span className="breadcrumb-item">{currentRouteLabel}</span>
+            <nav className="app-breadcrumb" aria-label="Navigation">
+              <span className="breadcrumb-item">{currentLabel}</span>
             </nav>
           </div>
-
           <div className="navbar-right">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRefreshAll}
-              title={t('header.refresh_all')}
-              aria-label={t('header.refresh_all')}
-            >
-              {headerIcons.refresh}
-            </Button>
-
-            <div
-              className={`language-menu ${languageMenuOpen ? 'open' : ''}`}
-              ref={languageMenuRef}
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={toggleLanguageMenu}
-                title={t('language.switch')}
-                aria-label={t('language.switch')}
-                aria-haspopup="menu"
-                aria-expanded={languageMenuOpen}
-              >
-                {headerIcons.language}
-              </Button>
-              {languageMenuOpen && (
-                <div
-                  className="notification entering language-menu-popover"
-                  role="menu"
-                  aria-label={t('language.switch')}
-                >
-                  {LANGUAGE_ORDER.map((lang) => (
-                    <button
-                      key={lang}
-                      type="button"
-                      className={`language-menu-option ${language === lang ? 'active' : ''}`}
-                      onClick={() => handleLanguageSelect(lang)}
-                      role="menuitemradio"
-                      aria-checked={language === lang}
-                    >
-                      <span>{t(LANGUAGE_LABEL_KEYS[lang])}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className={`theme-menu ${themeMenuOpen ? 'open' : ''}`} ref={themeMenuRef}>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={toggleThemeMenu}
-                title={t('theme.switch')}
-                aria-label={t('theme.switch')}
-                aria-haspopup="menu"
-                aria-expanded={themeMenuOpen}
-              >
-                {theme === 'auto'
-                  ? headerIcons.autoTheme
-                  : theme === 'dark'
-                    ? headerIcons.moon
-                    : headerIcons.sun}
-              </Button>
-              {themeMenuOpen && (
-                <div
-                  className="notification entering theme-menu-popover"
-                  role="menu"
-                  aria-label={t('theme.switch')}
-                >
-                  {THEME_OPTIONS.map((option) => (
-                    <button
-                      key={option.key}
-                      type="button"
-                      className={`theme-option ${theme === option.key ? 'active' : ''}`}
-                      onClick={() => handleThemeSelect(option.key)}
-                      role="menuitemradio"
-                      aria-checked={theme === option.key}
-                      title={t(option.labelKey)}
-                      aria-label={t(option.labelKey)}
-                    >
-                      <span className="theme-option-icon">{option.icon}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={logout}
-              title={t('header.logout')}
-              aria-label={t('header.logout')}
-            >
-              {headerIcons.logout}
-            </Button>
+            <button type="button" onClick={handleThemeToggle} className="theme-toggle-btn" title={theme === 'dark' ? 'Light mode' : 'Dark mode'} aria-label="Toggle theme">
+              {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+            </button>
           </div>
         </div>
       </header>
 
       <div className="main-body">
-        <button
-          type="button"
-          className={`sidebar-backdrop ${sidebarOpen ? 'visible' : ''}`}
-          onClick={() => setSidebarOpen(false)}
-          aria-label={t('common.close')}
-          aria-hidden={!sidebarOpen}
-          tabIndex={sidebarOpen ? 0 : -1}
-        />
+        <button type="button" className={`sidebar-backdrop ${sidebarOpen ? 'visible' : ''}`}
+          onClick={() => setSidebarOpen(false)} aria-label="Close" aria-hidden={!sidebarOpen} tabIndex={sidebarOpen ? 0 : -1} />
 
-        <aside
-          className={`sidebar ${sidebarOpen ? 'open' : ''} ${sidebarCollapsed ? 'collapsed' : ''}`}
-        >
+        <aside className={`sidebar ${sidebarOpen ? 'open' : ''} ${sidebarCollapsed ? 'collapsed' : ''}`}>
           <div className="sidebar-brand" title={fullBrandName}>
             <div className="sidebar-brand-main">
-              <img src={INLINE_LOGO_JPEG} alt="CPAMC logo" className="sidebar-brand-logo" />
-              {showSidebarLabels && <span className="sidebar-brand-title">{abbrBrandName}</span>}
+              <img src={INLINE_LOGO_JPEG} alt="CPA logo" className="sidebar-brand-logo" />
+              {showSidebarLabels && <span className="sidebar-brand-title">CPA</span>}
             </div>
-            {!showSidebarLabels && (
-              <span className="sidebar-brand-short">{abbrBrandName.charAt(0) || 'C'}</span>
-            )}
           </div>
-
           <div className="nav-section">
-            {navSections.map((section, sectionIndex) => (
-              <div className="nav-menu-section" key={`nav-section-${sectionIndex}`}>
-                {sectionIndex > 0 && <div className="nav-menu-divider" aria-hidden="true" />}
-                {section.map((item) => (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    end={item.path === '/' || item.exact}
-                    className={({ isActive }) =>
-                      `nav-item ${
-                        isActive || matchesNavPath(item, currentPath) ? 'active' : ''
-                      }`
-                    }
-                    onClick={() => setSidebarOpen(false)}
-                    title={item.label}
-                  >
+            {navSections.map((section, si) => (
+              <div className="nav-menu-section" key={`nav-${si}`}>
+                {section.map(item => (
+                  <NavLink key={item.path} to={item.path} end={item.path === '/'}
+                    className={({ isActive }) => `nav-item ${isActive || matchesNav(item, currentPath) ? 'active' : ''}`}
+                    onClick={() => setSidebarOpen(false)} title={item.label}>
                     <span className="nav-icon">{item.icon}</span>
-                    {showSidebarLabels && (
-                      <span className="nav-label">{item.shortLabel ?? item.label}</span>
-                    )}
+                    {showSidebarLabels && <span className="nav-label">{item.shortLabel}</span>}
                   </NavLink>
                 ))}
               </div>
@@ -818,34 +123,18 @@ export function MainLayout() {
           </div>
         </aside>
 
-        <div
-          className={[
-            'content',
-            isLogsPage ? 'content-logs' : '',
-            isPluginResourcePage ? 'content-plugin-resource' : '',
-          ]
-            .filter(Boolean)
-            .join(' ')}
-          ref={contentRef}
-        >
-          <main
-            className={[
-              'main-content',
-              isLogsPage ? 'main-content-logs' : '',
-              isPluginResourcePage ? 'main-content-plugin-resource' : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
-          >
-            <PageTransition
-              render={(location) => <MainRoutes location={location} />}
-              getRouteOrder={getRouteOrder}
-              getTransitionVariant={getTransitionVariant}
-              scrollContainerRef={contentRef}
-            />
+        <div className="content" ref={contentRef}>
+          <main className="main-content">
+            <MainRoutes />
           </main>
         </div>
       </div>
     </div>
   );
 }
+
+function CollapseIcon() { return <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x={3} y={4} width={18} height={16} rx={2} /><path d="M9 4v16" /><path d="m16 9-3 3 3 3" /></svg>; }
+function ExpandIcon() { return <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x={3} y={4} width={18} height={16} rx={2} /><path d="M9 4v16" /><path d="m13 9 3 3-3 3" /></svg>; }
+function CloseIcon() { return <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>; }
+function SunIcon() { return <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx={12} cy={12} r={4} /><path d="M12 2v2M12 20v2m-7.07-17.07 1.41 1.41m9.32 9.32 1.41 1.41M2 12h2M20 12h2m-13.66 5.66-1.41 1.41m9.32-9.32-1.41 1.41" /></svg>; }
+function MoonIcon() { return <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z" /></svg>; }

@@ -7,7 +7,7 @@ import type {
   ProviderKeyConfig,
 } from '@/types';
 import type { Config } from '@/types/config';
-import { buildHeaderObject } from '@/utils/headers';
+function buildHeaderObject(h: any) { return h; }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);

@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { ApiKeyUsageResponse } from '@/utils/recentRequests';
+type ApiKeyUsageResponse = any;
 
 const API_KEY_USAGE_TIMEOUT_MS = 30 * 1000;
 

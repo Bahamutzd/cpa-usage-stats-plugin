@@ -1,5 +1,1 @@
-export {
-  AccountExpandedDetails,
-  AccountOverviewCard,
-  MonitoringCenterPage,
-} from '@/features/monitoring/MonitoringCenterPage';
+export { MonitoringCenterPage } from '@/features/monitoring/MonitoringCenterPage';
