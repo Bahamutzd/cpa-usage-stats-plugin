@@ -6,7 +6,7 @@
       "name": "请求监控",
       "description": "以独立 CLIProxyAPI 插件方式提供请求监控。按账号和时间范围追踪调用规模、成功失败、Token 结构和估算花费，并提供接近请求日志的近实时事件表。",
       "author": "Bahamutzd",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "repository": "https://github.com/Bahamutzd/cpa-usage-stats-plugin",
       "homepage": "https://github.com/Bahamutzd/cpa-usage-stats-plugin",
       "license": "MIT",
