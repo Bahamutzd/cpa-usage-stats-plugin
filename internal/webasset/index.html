@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CPA Usage Stats</title>
+<style>
+  :root { color-scheme: light dark; --bd: rgba(127,127,127,.25); --muted:#888; --card:rgba(127,127,127,.06); }
+  * { box-sizing: border-box; }
+  body { font: 13px/1.55 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; margin:0; color:inherit; background:inherit; }
+  header { display:flex; gap:.6rem; align-items:center; padding:.6rem .9rem; border-bottom:1px solid var(--bd); flex-wrap:wrap; }
+  header h1 { font-size:1rem; margin:0 1rem 0 0; white-space:nowrap; }
+  header input { font:inherit; padding:.25rem .4rem; border:1px solid var(--bd); border-radius:.3rem; background:transparent; color:inherit; }
+  header input[name=key] { width:18rem; }
+  header button { font:inherit; padding:.25rem .6rem; border:1px solid var(--bd); border-radius:.3rem; background:transparent; color:inherit; cursor:pointer; }
+  header button:hover { background:var(--card); }
+  nav { display:flex; gap:.2rem; padding:.3rem .9rem; border-bottom:1px solid var(--bd); }
+  nav a { padding:.25rem .6rem; border-radius:.3rem; text-decoration:none; color:inherit; opacity:.7; }
+  nav a.active { background:var(--card); opacity:1; }
+  main { padding:.9rem; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(9rem,1fr)); gap:.6rem; margin-bottom:1rem; }
+  .card { border:1px solid var(--bd); border-radius:.5rem; padding:.6rem .7rem; background:var(--card); }
+  .card .k { color:var(--muted); font-size:.75rem; text-transform:uppercase; letter-spacing:.04em; }
+  .card .v { font-size:1.4rem; font-weight:600; }
+  .card .sub { color:var(--muted); font-size:.75rem; }
+  table { width:100%; border-collapse:collapse; font-size:.8rem; }
+  th,td { padding:.3rem .4rem; border-bottom:1px solid var(--bd); text-align:left; vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:.7rem; text-transform:uppercase; letter-spacing:.04em; }
+  td.num,th.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .bar { height:6px; border-radius:3px; background:var(--card); overflow:hidden; margin-top:.2rem; }
+  .bar > i { display:block; height:100%; background:#3b82f6; }
+  .tag { display:inline-block; padding:0 .35rem; border-radius:.25rem; background:var(--card); font-size:.7rem; }
+  .tag.fail { background:rgba(220,38,38,.18); color:#ef4444; }
+  .tag.ok { background:rgba(34,197,94,.16); color:#22c55e; }
+  .muted { color:var(--muted); }
+  .row { display:flex; gap:.6rem; align-items:center; margin-bottom:.6rem; flex-wrap:wrap; }
+  .err { color:#ef4444; padding:.4rem .6rem; border:1px solid rgba(239,68,68,.4); border-radius:.4rem; margin-bottom:.6rem; }
+  .tools { display:flex; gap:.4rem; margin-bottom:.6rem; align-items:center; }
+  input.ed { font:inherit; padding:.15rem .3rem; border:1px solid var(--bd); border-radius:.2rem; background:transparent; color:inherit; width:100%; }
+</style>
+</head>
+<body>
+<header>
+  <h1>CPA Usage Stats</h1>
+  <input name="base" placeholder="API base（留空=同源）" />
+  <input name="key" type="password" placeholder="Management Key" />
+  <button id="save-cfg">保存配置</button>
+  <span id="cfg-status" class="muted"></span>
+</header>
+<nav id="nav">
+  <a href="#/dashboard">概览</a>
+  <a href="#/monitoring">监控分析</a>
+  <a href="#/usage">事件</a>
+  <a href="#/apikeys">API Key 别名</a>
+  <a href="#/prices">模型价格</a>
+</nav>
+<main id="view"></main>
+
+<script>
+"use strict";
+const LS = { base: "cpaust.base", key: "cpaust.key" };
+const cfg = { base: localStorage.getItem(LS.base) || "", key: localStorage.getItem(LS.key) || "" };
+const $ = (s) => document.querySelector(s);
+const view = $("#view");
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+const num = (n) => Number(n||0).toLocaleString();
+const pct = (n) => (n==null||isNaN(n)) ? "—" : (n*100).toFixed(1)+"%";
+const dur = (n) => n==null ? "—" : Math.round(n)+"ms";
+const dayStartMS = () => { const d=new Date(); d.setHours(0,0,0,0); return d.getTime(); };
+const nowMS = () => Date.now();
+const h24 = () => nowMS() - 24*3600*1000;
+
+async function api(path, opts={}) {
+  const base = cfg.base.replace(/\/+$/,"");
+  const headers = Object.assign({ "Authorization": "Bearer " + cfg.key }, opts.headers||{});
+  if (opts.body && typeof opts.body !== "string") { headers["Content-Type"]="application/json"; opts.body=JSON.stringify(opts.body); }
+  const res = await fetch(base + path, Object.assign({}, opts, { headers }));
+  const ct = res.headers.get("content-type")||"";
+  if (res.status === 401) { showKeyNeeded(); throw new Error("需要 Management Key（401）"); }
+  if (!res.ok) {
+    const txt = ct.includes("json") ? (await res.json().catch(()=>({}))).error : await res.text().catch(()=> "");
+    throw new Error(res.status + " " + (txt||res.statusText));
+  }
+  if (ct.includes("application/x-ndjson") || ct.includes("octet-stream")) return await res.blob();
+  return ct.includes("json") ? res.json() : res.text();
+}
+function showKeyNeeded() { $("#cfg-status").textContent = "需要 Management Key"; }
+function errBox(e) { return `<div class="err">${esc(e.message)}</div>`; }
+
+function renderCfg() {
+  $('input[name=base]').value = cfg.base;
+  $('input[name=key]').value = cfg.key;
+  $("#cfg-status").textContent = cfg.key ? "已配置" : "未配置 key";
+}
+$("#save-cfg").onclick = () => {
+  cfg.base = $('input[name=base]').value.trim(); cfg.key = $('input[name=key]').value.trim();
+  localStorage.setItem(LS.base, cfg.base); localStorage.setItem(LS.key, cfg.key);
+  renderCfg(); route();
+};
+
+/*__DASHBOARD__*/
+async function renderDashboard() {
+  const s = await api(`/v0/management/dashboard/summary?today_start_ms=${dayStartMS()}&now_ms=${nowMS()}&top_models=8&recent_failures=10`);
+  const t = s.today || {};
+  const r = s.rolling_30m || {};
+  const cards = [
+    ["今日请求", num(t.total_calls), `成功 ${num(t.success_calls)} · 失败 ${num(t.failure_calls)}`],
+    ["成功率", pct(t.success_rate), `失败率 ${pct(t.failure_rate)}`],
+    ["今日 Token", num(t.total_tokens), `入 ${num(t.input_tokens)} / 出 ${num(t.output_tokens)}`],
+    ["30m RPM / TPM", `${num(r.rpm)} / ${num(r.tpm)}`, `30m 请求 ${num(r.total_calls)}`],
+    ["平均延迟", dur(t.average_latency_ms), `零 token ${num(t.zero_token_calls)}`],
+    ["缓存读/建", `${num(t.cache_read_tokens)} / ${num(t.cache_creation_tokens)}`, `reasoning ${num(t.reasoning_tokens)}`],
+  ];
+  let html = `<div class="cards">${cards.map(c=>`<div class="card"><div class="k">${c[0]}</div><div class="v">${c[1]}</div><div class="sub">${c[2]}</div></div>`).join("")}</div>`;
+  if (s.top_models_today && s.top_models_today.length) {
+    const maxCalls = Math.max(...s.top_models_today.map(m=>m.calls), 1);
+    html += `<h3>今日 Top 模型</h3><table><thead><tr><th>模型</th><th class="num">调用</th><th class="num">Token</th><th class="num">成功率</th><th></th></tr></thead><tbody>`;
+    html += s.top_models_today.map(m=>`<tr><td>${esc(m.model)}</td><td class="num">${num(m.calls)}</td><td class="num">${num(m.tokens)}</td><td class="num">${pct(m.success_rate)}</td><td style="min-width:8rem"><div class="bar"><i style="width:${(m.calls/maxCalls*100).toFixed(0)}%"></i></div></td></tr>`).join("");
+    html += `</tbody></table>`;
+  }
+  if (s.recent_failures && s.recent_failures.length) {
+    html += `<h3>最近失败</h3><table><thead><tr><th>时间</th><th>模型</th><th>来源</th><th class="num">状态码</th><th>摘要</th></tr></thead><tbody>`;
+    html += s.recent_failures.map(f=>`<tr><td class="muted">${new Date(f.timestamp_ms).toLocaleString()}</td><td>${esc(f.model)}</td><td class="muted">${esc(f.source||f.source_hash)}</td><td class="num">${f.fail_status_code||"—"}</td><td>${esc(f.fail_summary||"").slice(0,80)}</td></tr>`).join("");
+    html += `</tbody></table>`;
+  }
+  if (s.token_mix && s.token_mix.length) {
+    const total = s.token_mix.reduce((a,b)=>a+b.tokens,0) || 1;
+    html += `<h3>Token 构成</h3><div class="row">${s.token_mix.map(seg=>`<span class="tag">${esc(seg.key)} ${pct(seg.tokens/total)}</span>`).join("")}</div>`;
+  }
+  view.innerHTML = html;
+}
+/*__MONITORING__*/
+async function renderMonitoring() {
+  const body = { from_ms: h24(), to_ms: nowMS(), include: { summary:true, model_stats:true, timeline:true, hourly_distribution:true, channel_share:true, failure_sources:true, recent_failures:20 }, granularity: "hour" };
+  const a = await api("/v0/management/monitoring/analytics", { method:"POST", body });
+  let html = "";
+  if (a.summary) {
+    const s = a.summary;
+    html += `<div class="cards">`+
+      `<div class="card"><div class="k">总请求</div><div class="v">${num(s.total_calls)}</div><div class="sub">成功 ${num(s.success_calls)} / 失败 ${num(s.failure_calls)}</div></div>`+
+      `<div class="card"><div class="k">总 Token</div><div class="v">${num(s.total_tokens)}</div><div class="sub">入 ${num(s.input_tokens)} / 出 ${num(s.output_tokens)}</div></div>`+
+      `<div class="card"><div class="k">成功率</div><div class="v">${pct(s.success_rate)}</div><div class="sub">30m RPM ${num(s.rpm_30m)}</div></div>`+
+      `<div class="card"><div class="k">平均延迟</div><div class="v">${dur(s.average_latency_ms)}</div><div class="sub">零 token 调用 ${num(s.zero_token_calls)}</div></div>`+
+      `</div>`;
+  }
+  if (a.model_stats && a.model_stats.length) {
+    html += `<h3>模型统计</h3><table><thead><tr><th>模型</th><th class="num">调用</th><th class="num">成功</th><th class="num">失败</th><th class="num">成功率</th><th class="num">Token</th></tr></thead><tbody>`;
+    html += a.model_stats.map(m=>`<tr><td>${esc(m.model)}</td><td class="num">${num(m.calls)}</td><td class="num">${num(m.success_calls)}</td><td class="num">${num(m.failure_calls)}</td><td class="num">${pct(m.success_rate)}</td><td class="num">${num(m.total_tokens)}</td></tr>`).join("");
+    html += `</tbody></table>`;
+  }
+  if (a.timeline && a.timeline.length) {
+    const max = Math.max(...a.timeline.map(p=>p.calls), 1);
+    html += `<h3>时间线</h3><table><thead><tr><th>时间</th><th class="num">调用</th><th class="num">成功</th><th class="num">失败</th><th class="num">Token</th><th></th></tr></thead><tbody>`;
+    html += a.timeline.map(p=>`<tr><td class="muted">${esc(p.label)}</td><td class="num">${num(p.calls)}</td><td class="num">${num(p.success)}</td><td class="num">${num(p.failure)}</td><td class="num">${num(p.tokens)}</td><td style="min-width:6rem"><div class="bar"><i style="width:${(p.calls/max*100).toFixed(0)}%"></i></div></td></tr>`).join("");
+    html += `</tbody></table>`;
+  }
+  if (a.channel_share && a.channel_share.length) {
+    html += `<h3>渠道</h3><table><thead><tr><th>渠道</th><th class="num">调用</th><th class="num">失败</th><th class="num">失败率</th><th class="num">Token</th><th class="num">延迟</th></tr></thead><tbody>`;
+    html += a.channel_share.map(c=>`<tr><td>${esc(c.auth_index||"—")} ${esc(c.auth_label_snapshot||"")}</td><td class="num">${num(c.calls)}</td><td class="num">${num(c.failure)}</td><td class="num"><span class="tag ${c.failure>0?'fail':'ok'}">${pct(c.failure/c.calls)}</span></td><td class="num">${num(c.tokens)}</td><td class="num">${dur(c.average_latency_ms)}</td></tr>`).join("");
+    html += `</tbody></table>`;
+  }
+  if (a.recent_failures && a.recent_failures.length) {
+    html += `<h3>最近失败</h3><table><thead><tr><th>时间</th><th>模型</th><th>来源</th><th class="num">状态码</th><th>摘要</th></tr></thead><tbody>`;
+    html += a.recent_failures.map(f=>`<tr><td class="muted">${new Date(f.timestamp_ms).toLocaleString()}</td><td>${esc(f.model)}</td><td class="muted">${esc(f.source||f.source_hash)}</td><td class="num">${f.fail_status_code||"—"}</td><td>${esc(f.fail_summary||"").slice(0,80)}</td></tr>`).join("");
+    html += `</tbody></table>`;
+  }
+  view.innerHTML = html || '<p class="muted">窗口内无数据</p>';
+}
+/*__MODULES__*/
+async function renderUsage() {
+  let html = `<div class="tools"><button id="exp">导出 JSONL</button><span class="muted">最近 200 条</span></div><div id="usage-body">加载中…</div>`;
+  view.innerHTML = html;
+  $("#exp").onclick = async () => {
+    try { const blob = await api("/v0/management/usage/export"); const url = URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download="usage-events.jsonl"; a.click(); URL.revokeObjectURL(url); }
+    catch(e){ alert(e.message); }
+  };
+  const r = await api("/v0/management/usage?limit=200");
+  const items = r.events || [];
+  if (!items.length) { $("#usage-body").innerHTML = '<p class="muted">暂无事件</p>'; return; }
+  let html2 = `<table><thead><tr><th>时间</th><th>模型</th><th>渠道</th><th>来源</th><th class="num">入</th><th class="num">出</th><th class="num">缓存</th><th class="num">总</th><th class="num">延迟</th><th>状态</th></tr></thead><tbody>`;
+  html2 += items.map(e=>`<tr><td class="muted">${new Date(e.timestamp_ms).toLocaleString()}</td><td>${esc(e.model)}</td><td>${esc(e.auth_index||"—")}</td><td class="muted">${esc(e.source||"—")}</td><td class="num">${num(e.input_tokens)}</td><td class="num">${num(e.output_tokens)}</td><td class="num">${num(e.cache_read_tokens)}</td><td class="num">${num(e.total_tokens)}</td><td class="num">${e.latency_ms==null?"—":e.latency_ms+"ms"}</td><td>${e.failed?`<span class="tag fail">${e.fail_status_code||"失败"}</span>`:`<span class="tag ok">ok</span>`}</td></tr>`).join("");
+  html2 += `</tbody></table>`;
+  $("#usage-body").innerHTML = html2;
+}
+
+let apiKeyEdits = null;
+async function renderApiKeys() {
+  let html = `<div class="tools"><button id="ak-add">新增</button><button id="ak-save">保存（全量替换）</button><span class="muted">删除单个请编辑后从列表移除再保存</span></div><div id="ak-body">加载中…</div>`;
+  view.innerHTML = html;
+  const r = await api("/v0/management/api-key-aliases");
+  apiKeyEdits = (r.items||[]).map(x=>({ apiKeyHash:x.apiKeyHash, alias:x.alias }));
+  $("#ak-add").onclick = () => { apiKeyEdits.push({ apiKeyHash:"", alias:"" }); paintAk(); };
+  $("#ak-save").onclick = async () => {
+    try { await api("/v0/management/api-key-aliases",{method:"PUT",body:{items:apiKeyEdits}}); alert("已保存"); renderApiKeys(); }
+    catch(e){ alert("保存失败："+e.message); }
+  };
+  paintAk();
+}
+function paintAk() {
+  let html = `<table><thead><tr><th>API Key Hash (SHA-256)</th><th>别名</th><th></th></tr></thead><tbody>`;
+  html += apiKeyEdits.map((x,i)=>`<tr><td><input class="ed" data-k="h" data-i="${i}" value="${esc(x.apiKeyHash)}" placeholder="64 位 hex"></td><td><input class="ed" data-k="a" data-i="${i}" value="${esc(x.alias)}"></td><td><button data-del="${i}">删除</button></td></tr>`).join("");
+  html += `</tbody></table>`;
+  $("#ak-body").innerHTML = html;
+  $("#ak-body").querySelectorAll("input").forEach(inp=>inp.oninput=(ev)=>{ const i=+ev.target.dataset.i; if(ev.target.dataset.k==="h") apiKeyEdits[i].apiKeyHash=ev.target.value; else apiKeyEdits[i].alias=ev.target.value; });
+  $("#ak-body").querySelectorAll("button[data-del]").forEach(b=>b.onclick=(ev)=>{ apiKeyEdits.splice(+ev.target.dataset.del,1); paintAk(); });
+}
+
+let priceEdits = null;
+async function renderPrices() {
+  view.innerHTML = `<div class="tools"><button id="mp-sync">从 LiteLLM 同步</button><button id="mp-save">保存（全量替换）</button><span class="muted">单位 USD / 1M token</span></div><div id="mp-body">加载中…</div>`;
+  const r = await api("/v0/management/model-prices");
+  priceEdits = r.prices || {};
+  $("#mp-sync").onclick = async () => {
+    $("#mp-body").innerHTML = '<p class="muted">同步中…</p>';
+    try { const res = await api("/v0/management/model-prices/sync",{method:"POST"}); priceEdits = res.prices||{}; alert(`导入 ${res.imported||0}，跳过 ${res.skipped||0}`); paintMp(); }
+    catch(e){ alert("同步失败："+e.message); $("#mp-body").innerHTML = errBox(e); }
+  };
+  $("#mp-save").onclick = async () => {
+    try { await api("/v0/management/model-prices",{method:"PUT",body:{prices:priceEdits}}); alert("已保存"); }
+    catch(e){ alert("保存失败："+e.message); }
+  };
+  paintMp();
+}
+function paintMp() {
+  const ids = Object.keys(priceEdits).sort();
+  if (!ids.length) { $("#mp-body").innerHTML = '<p class="muted">暂无价格，可点「从 LiteLLM 同步」</p>'; return; }
+  let html = `<table><thead><tr><th>模型</th><th class="num">Prompt</th><th class="num">Completion</th><th class="num">缓存读</th><th class="num">缓存建</th><th>来源</th><th></th></tr></thead><tbody>`;
+  html += ids.map(id=>{ const p=priceEdits[id]; return `<tr><td>${esc(id)}</td><td class="num"><input class="ed" data-f="prompt" data-id="${esc(id)}" value="${p.prompt||0}"></td><td class="num"><input class="ed" data-f="completion" data-id="${esc(id)}" value="${p.completion||0}"></td><td class="num"><input class="ed" data-f="cacheRead" data-id="${esc(id)}" value="${p.cacheRead||0}"></td><td class="num"><input class="ed" data-f="cacheCreation" data-id="${esc(id)}" value="${p.cacheCreation||0}"></td><td class="muted">${esc(p.source||"")}</td><td><button data-del="${esc(id)}">删除</button></td></tr>`; }).join("");
+  html += `</tbody></table>`;
+  $("#mp-body").innerHTML = html;
+  $("#mp-body").querySelectorAll("input").forEach(inp=>inp.oninput=(ev)=>{ const id=ev.target.dataset.id, f=ev.target.dataset.f, v=parseFloat(ev.target.value)||0; priceEdits[id]=priceEdits[id]||{}; priceEdits[id][f]=v; });
+  $("#mp-body").querySelectorAll("button[data-del]").forEach(b=>b.onclick=(ev)=>{ const id=ev.target.dataset.del; delete priceEdits[id]; paintMp(); });
+}
+
+const routes = {
+  "/dashboard": renderDashboard,
+  "/monitoring": renderMonitoring,
+  "/usage": renderUsage,
+  "/apikeys": renderApiKeys,
+  "/prices": renderPrices,
+};
+function route() {
+  const hash = location.hash.replace(/^#/,"") || "/dashboard";
+  const fn = routes[hash] || renderDashboard;
+  document.querySelectorAll("#nav a").forEach(a => a.classList.toggle("active", a.getAttribute("href")==="#"+hash));
+  view.innerHTML = '<p class="muted">加载中…</p>';
+  Promise.resolve(fn()).catch(e => view.innerHTML = errBox(e));
+}
+window.addEventListener("hashchange", route);
+renderCfg();
+route();
+</script>
+</body>
+</html>

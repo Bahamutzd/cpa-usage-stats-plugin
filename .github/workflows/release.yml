@@ -1,0 +1,142 @@
+name: release
+
+# Builds the cpa-usage-stats plugin as a c-shared library for every supported
+# (GOOS, GOARCH) tuple, packages each library into the zip layout the
+# CLIProxyAPI plugin store expects, and uploads them with a checksums.txt
+# matching pluginstore.ParseChecksums on the release.
+#
+# Trigger by pushing a tag of the form vX.Y.Z. The version inside registry.json
+# and the manifest must match X.Y.Z (no leading "v") — pluginstore.ValidatePlugin
+# rejects a leading "v".
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Override version (no leading v). Defaults to the tag stripped of its v prefix."
+        required: false
+
+permissions:
+  contents: write
+
+env:
+  PLUGIN_ID: cpa-usage-stats
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            ext: so
+            cc: gcc
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            ext: so
+            cc: aarch64-linux-gnu-gcc
+            apt: gcc-aarch64-linux-gnu
+          - os: macos-13
+            goos: darwin
+            goarch: amd64
+            ext: dylib
+            cc: clang
+          - os: macos-14
+            goos: darwin
+            goarch: arm64
+            ext: dylib
+            cc: clang
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            ext: dll
+            cc: gcc
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+
+      - name: Install cross compiler
+        if: matrix.apt != ''
+        run: sudo apt-get update && sudo apt-get install -y ${{ matrix.apt }}
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Build shared library
+        shell: bash
+        env:
+          CGO_ENABLED: 1
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CC: ${{ matrix.cc }}
+        run: |
+          mkdir -p dist
+          OUTPUT="dist/${PLUGIN_ID}.${{ matrix.ext }}"
+          go build -trimpath -buildmode=c-shared -o "${OUTPUT}" .
+
+      - name: Stage zip layout
+        shell: bash
+        run: |
+          ZIP_NAME="${PLUGIN_ID}_${{ steps.version.outputs.version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip"
+          echo "ZIP_NAME=${ZIP_NAME}" >> "$GITHUB_ENV"
+          mkdir -p stage
+          cp "dist/${PLUGIN_ID}.${{ matrix.ext }}" "stage/${PLUGIN_ID}.${{ matrix.ext }}"
+
+      - name: Create zip
+        shell: bash
+        run: |
+          cd stage
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            powershell -NoProfile -Command "Compress-Archive -Path '${PLUGIN_ID}.${{ matrix.ext }}' -DestinationPath '../${ZIP_NAME}' -Force"
+          else
+            zip -j "../${ZIP_NAME}" "${PLUGIN_ID}.${{ matrix.ext }}"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ZIP_NAME }}
+          path: ${{ env.ZIP_NAME }}
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten artifacts and write checksums
+        shell: bash
+        run: |
+          mkdir -p release
+          find artifacts -type f -name '*.zip' -exec cp {} release/ \;
+          cd release
+          sha256sum *.zip > checksums.txt
+          cat checksums.txt
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.zip
+            release/checksums.txt

@@ -1,0 +1,27 @@
+# Build artifacts
+/dist/
+/stage/
+/release/
+/artifacts/
+
+# Plugin shared libraries (built locally for testing)
+*.so
+*.dylib
+*.dll
+*.h
+
+# Local SQLite databases produced by ad-hoc runs
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Editor & OS noise
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Front-end build output (added when web/ is wired in)
+/web/node_modules/
+/web/dist/
