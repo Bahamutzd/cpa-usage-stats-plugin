@@ -85,6 +85,20 @@ management UI.
 > with the shared library at the zip root. The workflow in
 > `.github/workflows/release.yml` builds that layout from a `vX.Y.Z` tag.
 
+### Automatic version tagging
+
+- `.github/workflows/auto-tag-release.yml` runs after the `ci` workflow
+  succeeds on `main`.
+- It reads the version from `internal/plugin/config.go` and
+  `plugins-store/registry.json`, requires them to match, and only creates a
+  new `vX.Y.Z` tag when that version changed in the validated `main` commit.
+- If the matching tag already exists, or the commit did not change the version,
+  the workflow exits without creating a new release.
+- Configure a repository secret named `RELEASE_PAT` with `Contents: Read and
+  write` access to this repository. The workflow must push tags with that
+  token, because tags created by the default `GITHUB_TOKEN` do not trigger the
+  downstream `release.yml` workflow.
+
 ## Build locally
 
 The runtime dashboard is embedded from `internal/webasset/panel.html`; no

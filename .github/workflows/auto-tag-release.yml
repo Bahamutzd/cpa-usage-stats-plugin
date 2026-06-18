@@ -1,0 +1,148 @@
+name: auto-tag-release
+
+# After main-branch CI succeeds, inspect the version declared in the two
+# release-source files. If that version changed in the just-validated commit
+# and the matching vX.Y.Z tag does not exist yet, push the tag so release.yml
+# can build and publish the GitHub release assets.
+#
+# Important: the tag push must use a Personal Access Token (or GitHub App
+# token), not the default GITHUB_TOKEN. Tags created with GITHUB_TOKEN do not
+# trigger downstream workflows, so release.yml would never run.
+
+on:
+  workflow_run:
+    workflows:
+      - ci
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Optional git ref or SHA to inspect. Defaults to main."
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  tag:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout workflow_dispatch target
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref != '' && github.event.inputs.ref || 'main' }}
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Checkout successful main commit
+        if: github.event_name == 'workflow_run'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Fetch tags
+        run: git fetch --force --tags origin
+
+      - name: Resolve version and tag intent
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          extract_config_version() {
+            sed -n 's/.*Version:[[:space:]]*"\([^"]*\)".*/\1/p' "$1" | head -n 1
+          }
+
+          extract_registry_version() {
+            sed -n 's/.*"version":[[:space:]]*"\([^"]*\)".*/\1/p' "$1" | head -n 1
+          }
+
+          CURRENT_CONFIG_VERSION="$(extract_config_version internal/plugin/config.go)"
+          CURRENT_REGISTRY_VERSION="$(extract_registry_version plugins-store/registry.json)"
+
+          if [ -z "${CURRENT_CONFIG_VERSION}" ] || [ -z "${CURRENT_REGISTRY_VERSION}" ]; then
+            echo "::error::Failed to extract version from internal/plugin/config.go or plugins-store/registry.json."
+            exit 1
+          fi
+
+          if [ "${CURRENT_CONFIG_VERSION}" != "${CURRENT_REGISTRY_VERSION}" ]; then
+            echo "::error::Version mismatch: config.go=${CURRENT_CONFIG_VERSION}, registry.json=${CURRENT_REGISTRY_VERSION}."
+            exit 1
+          fi
+
+          VERSION="${CURRENT_CONFIG_VERSION}"
+          TAG="v${VERSION}"
+          SHOULD_TAG="true"
+          REASON="version changed and tag missing"
+
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            CHANGED_VERSION_FILES="$(git diff --name-only HEAD^ HEAD -- internal/plugin/config.go plugins-store/registry.json || true)"
+            if [ -z "${CHANGED_VERSION_FILES}" ]; then
+              SHOULD_TAG="false"
+              REASON="version source files unchanged in the validated main commit"
+            else
+              PREVIOUS_CONFIG_VERSION="$(git show HEAD^:internal/plugin/config.go 2>/dev/null | sed -n 's/.*Version:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1 || true)"
+              PREVIOUS_REGISTRY_VERSION="$(git show HEAD^:plugins-store/registry.json 2>/dev/null | sed -n 's/.*"version":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1 || true)"
+              if [ "${VERSION}" = "${PREVIOUS_CONFIG_VERSION}" ] && [ "${VERSION}" = "${PREVIOUS_REGISTRY_VERSION}" ]; then
+                SHOULD_TAG="false"
+                REASON="version files changed but version stayed the same"
+              fi
+            fi
+          fi
+
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            SHOULD_TAG="false"
+            REASON="tag already exists on origin"
+          fi
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "should_tag=${SHOULD_TAG}" >> "$GITHUB_OUTPUT"
+          echo "reason=${REASON}" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "### Auto tag decision"
+            echo ""
+            echo "- Version: \`${VERSION}\`"
+            echo "- Tag: \`${TAG}\`"
+            echo "- Should tag: \`${SHOULD_TAG}\`"
+            echo "- Reason: ${REASON}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate release token
+        if: steps.version.outputs.should_tag == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${{ secrets.RELEASE_PAT }}" ]; then
+            echo "::error::Secret RELEASE_PAT is required to push tags that trigger release.yml."
+            exit 1
+          fi
+
+      - name: Create and push release tag
+        if: steps.version.outputs.should_tag == 'true'
+        env:
+          RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.version.outputs.tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${TAG}" -m "Release ${TAG}"
+          git remote set-url origin "https://x-access-token:${RELEASE_PAT}@github.com/${{ github.repository }}.git"
+          git push origin "refs/tags/${TAG}"
+
+      - name: Skip summary
+        if: steps.version.outputs.should_tag != 'true'
+        run: echo "Skip auto tag: ${{ steps.version.outputs.reason }}"
