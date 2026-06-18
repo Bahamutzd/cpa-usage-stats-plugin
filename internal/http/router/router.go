@@ -1,7 +1,3 @@
-// Package router builds the embedded http.Handler that the plugin uses to
-// answer management.handle requests. Paths are relative to /v0/management
-// because CLIProxyAPI strips that prefix before handing the request to the
-// plugin's ManagementHandler.
 package router
 
 import (
@@ -12,16 +8,15 @@ import (
 	modelpricectl "github.com/Bahamutzd/cpa-usage-stats-plugin/internal/http/controller/modelprice"
 	monitoringctl "github.com/Bahamutzd/cpa-usage-stats-plugin/internal/http/controller/monitoring"
 	usagectl "github.com/Bahamutzd/cpa-usage-stats-plugin/internal/http/controller/usage"
+	"github.com/Bahamutzd/cpa-usage-stats-plugin/internal/cache"
 	"github.com/Bahamutzd/cpa-usage-stats-plugin/internal/store"
 )
 
-// New returns the management API mux. The host has already authenticated the
-// caller and stripped /v0/management, so handlers see /usage, /dashboard/summary,
-// /monitoring/analytics, /api-key-aliases, /model-prices directly.
-func New(st *store.Store) http.Handler {
+// New returns the management API mux.
+func New(st *store.Store, c *cache.Store) http.Handler {
 	usageHandler := &usagectl.Handler{Store: st}
-	dashboardHandler := &dashboardctl.Handler{Store: st}
-	monitoringHandler := &monitoringctl.Handler{Store: st}
+	dashboardHandler := &dashboardctl.Handler{Store: st, Cache: c}
+	monitoringHandler := &monitoringctl.Handler{Store: st, Cache: c}
 	apiKeyAliasHandler := &apikeyaliasctl.Handler{Store: st}
 	modelPriceHandler := &modelpricectl.Handler{Store: st}
 
@@ -38,8 +33,6 @@ func New(st *store.Store) http.Handler {
 	return notFoundFallback(mux)
 }
 
-// notFoundFallback turns the default ServeMux 404 (plaintext body) into a JSON
-// 404 so the management UI surfaces it consistently.
 func notFoundFallback(mux *http.ServeMux) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, pattern := mux.Handler(r)

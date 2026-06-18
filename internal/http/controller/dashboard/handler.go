@@ -1,9 +1,3 @@
-// Package dashboard answers /dashboard/summary. The shape mirrors
-// CPA-Manager-Plus's DashboardSummaryResponse; the front-end DashboardPage
-// reads today/rolling counts, top models, traffic timeline, hourly activity,
-// token mix, channel health, failure sources and recent failures. Cost and
-// the today_request_health_timeline tone derivation are simplified here and
-// land in a later batch.
 package dashboard
 
 import (
@@ -12,12 +6,14 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Bahamutzd/cpa-usage-stats-plugin/internal/cache"
 	"github.com/Bahamutzd/cpa-usage-stats-plugin/internal/store"
 )
 
 // Handler owns endpoints under /dashboard/*.
 type Handler struct {
 	Store *store.Store
+	Cache *cache.Store
 }
 
 // summaryParams mirrors DashboardSummaryParams.
@@ -28,7 +24,8 @@ type summaryParams struct {
 	RecentFailures int
 }
 
-// Summary handles GET /dashboard/summary.
+// Summary handles GET /dashboard/summary. Results are cached for 15 seconds
+// to avoid re-running 9 SQLite aggregation queries on every 30s auto-refresh.
 func (h *Handler) Summary(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed")
@@ -39,7 +36,20 @@ func (h *Handler) Summary(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, errParse.Error())
 		return
 	}
+
+	cacheKey := "dash:" + strconv.FormatInt(params.TodayStartMS, 10)
+	if h.Cache != nil {
+		if cached, ok := h.Cache.Get(cacheKey); ok {
+			writeJSON(w, http.StatusOK, cached)
+			return
+		}
+	}
+
 	resp := buildSummary(r, h.Store, params)
+
+	if h.Cache != nil {
+		h.Cache.Set(cacheKey, resp, 15*1000)
+	}
 	writeJSON(w, http.StatusOK, resp)
 }
 

@@ -137,7 +137,7 @@ func handleManagementHandle(payload []byte) []byte {
 
 	httpReq := buildHTTPRequest(req)
 	recorder := newResponseRecorder()
-	router.New(st).ServeHTTP(recorder, httpReq)
+	router.New(st, currentCache()).ServeHTTP(recorder, httpReq)
 
 	return OkEnvelope(managementResponse{
 		StatusCode: recorder.status,

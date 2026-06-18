@@ -10,12 +10,14 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Bahamutzd/cpa-usage-stats-plugin/internal/cache"
 	"github.com/Bahamutzd/cpa-usage-stats-plugin/internal/store"
 )
 
 // Handler owns endpoints under /monitoring/*.
 type Handler struct {
 	Store *store.Store
+	Cache *cache.Store
 }
 
 // analyticsRequest mirrors MonitoringAnalyticsRequest from the front-end.

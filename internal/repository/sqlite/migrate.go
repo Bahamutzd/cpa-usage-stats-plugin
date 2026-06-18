@@ -67,6 +67,11 @@ func Migrate(db *sql.DB) error {
 		`create index if not exists idx_usage_events_failed on usage_events(failed)`,
 		`create index if not exists idx_usage_events_api_key_hash on usage_events(api_key_hash)`,
 		`create index if not exists idx_usage_events_source on usage_events(source)`,
+		`create index if not exists idx_usage_events_ts_failed on usage_events(timestamp_ms, failed)`, 
+		`create index if not exists idx_usage_events_ts_model on usage_events(timestamp_ms, model)`, 
+		`create index if not exists idx_usage_events_ts_auth on usage_events(timestamp_ms, auth_index)`, 
+		`create index if not exists idx_usage_events_ts_src on usage_events(timestamp_ms, source_hash)`, 
+		`analyze`,
 		`create table if not exists api_key_aliases (
 			api_key_hash text primary key,
 			alias text not null,

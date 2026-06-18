@@ -10,6 +10,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/Bahamutzd/cpa-usage-stats-plugin/internal/cache"
 	"github.com/Bahamutzd/cpa-usage-stats-plugin/internal/store"
 )
 
@@ -21,7 +22,7 @@ const pluginID = "cpa-usage-stats"
 // management UI display.
 var metadata = pluginMetadata{
 	Name:             pluginID,
-	Version:          "0.1.3",
+	Version:          "0.1.4",
 	Author:           "router-for-me",
 	GitHubRepository: "https://github.com/Bahamutzd/cpa-usage-stats-plugin",
 	Logo:             "",
@@ -190,6 +191,7 @@ func intField(m map[string]any, key string) (int, bool) {
 type runtimeState struct {
 	cfg    runtimeConfig
 	store  *store.Store
+	cache  *cache.Store
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 }
@@ -223,7 +225,7 @@ func bootstrap(cfg runtimeConfig) error {
 		return errOpen
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	next := &runtimeState{cfg: cfg, store: st, cancel: cancel}
+	next := &runtimeState{cfg: cfg, store: st, cache: cache.New(), cancel: cancel}
 	if cfg.RetentionDays > 0 {
 		next.wg.Add(1)
 		go runRetention(ctx, &next.wg, st, cfg.RetentionDays)
@@ -239,6 +241,15 @@ func currentStore() *store.Store {
 		return nil
 	}
 	return state.store
+}
+
+func currentCache() *cache.Store {
+	stateMu.Lock()
+	defer stateMu.Unlock()
+	if state == nil {
+		return nil
+	}
+	return state.cache
 }
 
 // runRetention periodically deletes events older than retentionDays. The
